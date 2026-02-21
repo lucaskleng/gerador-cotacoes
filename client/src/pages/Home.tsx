@@ -7,12 +7,17 @@
 import WizardStepper from "@/components/WizardStepper";
 import WizardContainer from "@/components/WizardContainer";
 import { useQuotationStore } from "@/store/quotationStore";
-import { FileText, RotateCcw } from "lucide-react";
+import { FileText, RotateCcw, LayoutList, LogIn } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
+import { useLocation } from "wouter";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { getLoginUrl } from "@/const";
 
 export default function Home() {
   const { resetQuotation, info, grandTotal } = useQuotationStore();
+  const [, navigate] = useLocation();
+  const { isAuthenticated } = useAuth();
 
   const handleReset = () => {
     if (
@@ -30,7 +35,7 @@ export default function Home() {
   return (
     <div className="min-h-screen flex flex-col bg-background">
       {/* Top Bar */}
-      <header className="border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-50">
+      <header className="border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-50 no-print">
         <div className="container flex items-center justify-between h-14">
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
@@ -45,20 +50,45 @@ export default function Home() {
               </p>
             </div>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleReset}
-            className="text-muted-foreground hover:text-foreground gap-1.5 text-xs"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            Nova Cotação
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleReset}
+              className="text-muted-foreground hover:text-foreground gap-1.5 text-xs"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              Nova Cotação
+            </Button>
+            {isAuthenticated ? (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate("/cotacoes")}
+                className="gap-1.5 text-xs"
+              >
+                <LayoutList className="w-3.5 h-3.5" />
+                Minhas Cotações
+              </Button>
+            ) : (
+              <Button
+                variant="outline"
+                size="sm"
+                asChild
+                className="gap-1.5 text-xs"
+              >
+                <a href={getLoginUrl()}>
+                  <LogIn className="w-3.5 h-3.5" />
+                  Entrar
+                </a>
+              </Button>
+            )}
+          </div>
         </div>
       </header>
 
       {/* Stepper */}
-      <div className="border-b border-border/50 bg-card/40">
+      <div className="border-b border-border/50 bg-card/40 no-print">
         <div className="container">
           <WizardStepper />
         </div>

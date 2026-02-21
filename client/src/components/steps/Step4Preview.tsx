@@ -2,18 +2,22 @@
  * Step 4 — Finalizar / Preview
  * Design: Clean Commerce / Swiss Design
  * Print-ready preview of the quotation document
- * Approve simulation button
+ * Save to database via tRPC + Approve simulation
  */
 
 import { useQuotationStore } from "@/store/quotationStore";
+import { useAuth } from "@/_core/hooks/useAuth";
+import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import {
   ArrowLeft,
   Printer,
   CheckCircle2,
-  Download,
+  Save,
   RotateCcw,
+  LayoutList,
+  LogIn,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import {
@@ -25,13 +29,44 @@ import {
 } from "@/lib/format";
 import { useState, useMemo } from "react";
 import { toast } from "sonner";
+import { useLocation } from "wouter";
+import { getLoginUrl } from "@/const";
 
 export default function Step4Preview() {
-  const { info, items, conditions, texts, subtotal, totalDiscount, grandTotal, setStep, markStepComplete, resetQuotation } =
-    useQuotationStore();
+  const {
+    info,
+    items,
+    conditions,
+    texts,
+    subtotal,
+    totalDiscount,
+    grandTotal,
+    setStep,
+    markStepComplete,
+    resetQuotation,
+  } = useQuotationStore();
 
+  const { isAuthenticated } = useAuth();
+  const [, navigate] = useLocation();
   const [approved, setApproved] = useState(false);
+  const [savedId, setSavedId] = useState<number | null>(null);
+  const [savedNumber, setSavedNumber] = useState<string | null>(null);
   const quotationNumber = useMemo(() => generateQuotationNumber(), []);
+
+  const saveMutation = trpc.quotation.create.useMutation({
+    onSuccess: (data) => {
+      setSavedId(data.id);
+      setSavedNumber(data.quotationNumber);
+      toast.success("Cotação salva com sucesso!", {
+        description: `Número: ${data.quotationNumber}`,
+      });
+    },
+    onError: (err) => {
+      toast.error("Erro ao salvar cotação", {
+        description: err.message,
+      });
+    },
+  });
 
   // Build variables map
   const variables: Record<string, string | number> = {
@@ -59,16 +94,66 @@ export default function Step4Preview() {
     window.print();
   };
 
+  const handleSave = (status: "draft" | "approved" = "draft") => {
+    saveMutation.mutate({
+      customerName: info.customerName,
+      customerEmail: info.customerEmail || undefined,
+      customerPhone: info.customerPhone || undefined,
+      customerCompany: info.customerCompany || undefined,
+      customerCNPJ: info.customerCNPJ || undefined,
+      customerAddress: info.customerAddress || undefined,
+      reference: info.reference || undefined,
+      validityDays: info.validityDays,
+      quotationDate: info.createdAt,
+      notes: info.notes || undefined,
+      items: validItems.map((item) => ({
+        id: item.id,
+        description: item.description,
+        unit: item.unit,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice,
+        discount: item.discount,
+        subtotal: item.subtotal,
+      })),
+      conditions: {
+        paymentTerms: conditions.paymentTerms,
+        deliveryTime: conditions.deliveryTime,
+        freight: conditions.freight,
+        freightValue: conditions.freightValue,
+        warranty: conditions.warranty,
+      },
+      texts: {
+        headerText: texts.headerText,
+        introNotes: texts.introNotes,
+        commercialNotes: texts.commercialNotes,
+        technicalNotes: texts.technicalNotes,
+        closingNotes: texts.closingNotes,
+        footerText: texts.footerText,
+      },
+      subtotal,
+      totalDiscount,
+      grandTotal,
+      status,
+    });
+  };
+
   const handleApprove = () => {
     markStepComplete(4);
     setApproved(true);
-    toast.success("Cotação aprovada com sucesso!", {
-      description: `Número: ${quotationNumber}`,
-    });
+    if (isAuthenticated && !savedId) {
+      handleSave("approved");
+    } else {
+      toast.success("Cotação aprovada com sucesso!", {
+        description: `Número: ${savedNumber || quotationNumber}`,
+      });
+    }
   };
 
   const handleNewQuotation = () => {
     resetQuotation();
+    setSavedId(null);
+    setSavedNumber(null);
+    setApproved(false);
     toast.info("Nova cotação iniciada.");
   };
 
@@ -81,34 +166,132 @@ export default function Step4Preview() {
       className="max-w-4xl mx-auto space-y-6"
     >
       {/* Action Bar */}
-      <div className="no-print flex items-center justify-between">
+      <div className="no-print flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-lg font-semibold">Pré-visualização da Proposta</h2>
           <p className="text-sm text-muted-foreground">
-            Revise o documento antes de aprovar ou imprimir.
+            Revise o documento antes de salvar, aprovar ou imprimir.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           <Button variant="outline" size="sm" onClick={handlePrint} className="gap-1.5">
             <Printer className="w-4 h-4" />
             Imprimir
           </Button>
-          {!approved ? (
-            <Button size="sm" onClick={handleApprove} className="gap-1.5">
-              <CheckCircle2 className="w-4 h-4" />
-              Aprovar Cotação
-            </Button>
+          {isAuthenticated ? (
+            <>
+              {!savedId && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleSave("draft")}
+                  disabled={saveMutation.isPending}
+                  className="gap-1.5"
+                >
+                  <Save className="w-4 h-4" />
+                  {saveMutation.isPending ? "Salvando..." : "Salvar Rascunho"}
+                </Button>
+              )}
+              {!approved ? (
+                <Button
+                  size="sm"
+                  onClick={handleApprove}
+                  disabled={saveMutation.isPending}
+                  className="gap-1.5"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  Aprovar e Salvar
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleNewQuotation}
+                  className="gap-1.5"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  Nova Cotação
+                </Button>
+              )}
+            </>
           ) : (
-            <Button size="sm" variant="outline" onClick={handleNewQuotation} className="gap-1.5">
-              <RotateCcw className="w-4 h-4" />
-              Nova Cotação
-            </Button>
+            <>
+              {!approved ? (
+                <Button size="sm" onClick={handleApprove} className="gap-1.5">
+                  <CheckCircle2 className="w-4 h-4" />
+                  Aprovar Cotação
+                </Button>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleNewQuotation}
+                  className="gap-1.5"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                  Nova Cotação
+                </Button>
+              )}
+            </>
           )}
         </div>
       </div>
 
-      {/* Approved Badge */}
-      {approved && (
+      {/* Saved Badge */}
+      {savedId && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="no-print bg-[oklch(0.95_0.05_145)] border border-[oklch(0.80_0.10_145)] rounded-lg p-4 flex items-center justify-between"
+        >
+          <div className="flex items-center gap-3">
+            <CheckCircle2 className="w-5 h-5 text-[oklch(0.50_0.15_145)]" />
+            <div>
+              <p className="text-sm font-medium text-[oklch(0.30_0.05_145)]">
+                Cotação Salva{approved ? " e Aprovada" : ""}
+              </p>
+              <p className="text-xs text-[oklch(0.40_0.08_145)]">
+                Número: {savedNumber} — Salva no banco de dados
+              </p>
+            </div>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate("/cotacoes")}
+            className="gap-1.5 text-xs"
+          >
+            <LayoutList className="w-3.5 h-3.5" />
+            Ver Cotações
+          </Button>
+        </motion.div>
+      )}
+
+      {/* Login Hint */}
+      {!isAuthenticated && !approved && (
+        <div className="no-print bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <LogIn className="w-5 h-5 text-blue-600" />
+            <div>
+              <p className="text-sm font-medium text-blue-900">
+                Faça login para salvar
+              </p>
+              <p className="text-xs text-blue-700">
+                Suas cotações serão salvas no banco de dados para consulta futura.
+              </p>
+            </div>
+          </div>
+          <Button variant="outline" size="sm" asChild className="gap-1.5 text-xs">
+            <a href={getLoginUrl()}>
+              <LogIn className="w-3.5 h-3.5" />
+              Entrar
+            </a>
+          </Button>
+        </div>
+      )}
+
+      {/* Approved Badge (when not saved) */}
+      {approved && !savedId && (
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -142,7 +325,7 @@ export default function Step4Preview() {
                   Proposta Nº
                 </div>
                 <div className="font-mono text-sm font-semibold text-primary">
-                  {quotationNumber}
+                  {savedNumber || quotationNumber}
                 </div>
                 <div className="text-xs text-muted-foreground mt-1">
                   {formatDate(info.createdAt)}
@@ -345,10 +528,25 @@ export default function Step4Preview() {
             <Printer className="w-4 h-4" />
             Imprimir / PDF
           </Button>
+          {isAuthenticated && !savedId && (
+            <Button
+              variant="outline"
+              onClick={() => handleSave("draft")}
+              disabled={saveMutation.isPending}
+              className="gap-1.5"
+            >
+              <Save className="w-4 h-4" />
+              {saveMutation.isPending ? "Salvando..." : "Salvar Rascunho"}
+            </Button>
+          )}
           {!approved ? (
-            <Button onClick={handleApprove} className="gap-1.5">
+            <Button
+              onClick={handleApprove}
+              disabled={saveMutation.isPending}
+              className="gap-1.5"
+            >
               <CheckCircle2 className="w-4 h-4" />
-              Aprovar Cotação
+              {isAuthenticated ? "Aprovar e Salvar" : "Aprovar Cotação"}
             </Button>
           ) : (
             <Button variant="outline" onClick={handleNewQuotation} className="gap-1.5">
