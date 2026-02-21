@@ -7,7 +7,7 @@
 import WizardStepper from "@/components/WizardStepper";
 import WizardContainer from "@/components/WizardContainer";
 import { useQuotationStore } from "@/store/quotationStore";
-import { FileText, RotateCcw, LayoutList, LogIn } from "lucide-react";
+import { FileText, RotateCcw, LayoutList, LogIn, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
@@ -58,18 +58,29 @@ export default function Home() {
               className="text-muted-foreground hover:text-foreground gap-1.5 text-xs"
             >
               <RotateCcw className="w-3.5 h-3.5" />
-              Nova Cotação
+              <span className="hidden sm:inline">Nova Cotação</span>
             </Button>
             {isAuthenticated ? (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => navigate("/cotacoes")}
-                className="gap-1.5 text-xs"
-              >
-                <LayoutList className="w-3.5 h-3.5" />
-                Minhas Cotações
-              </Button>
+              <>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => navigate("/cotacoes")}
+                  className="gap-1.5 text-xs"
+                >
+                  <LayoutList className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Minhas Cotações</span>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate("/configuracoes")}
+                  className="text-muted-foreground hover:text-foreground gap-1.5 text-xs"
+                  title="Configurações de Design"
+                >
+                  <Settings className="w-3.5 h-3.5" />
+                </Button>
+              </>
             ) : (
               <Button
                 variant="outline"

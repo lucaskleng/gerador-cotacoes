@@ -14,3 +14,13 @@
 - [x] Página de listagem/histórico de cotações
 - [x] Integrar wizard com salvamento no banco de dados
 - [x] Testes vitest para os endpoints
+- [x] Schema DB para configurações gráficas do usuário (design_settings)
+- [x] API endpoints tRPC para salvar/carregar configurações
+- [x] Página de Configurações com seções: Empresa, Cores da Plataforma, Design da Proposta
+- [x] Upload de logo da empresa com preview
+- [x] Seletor de cores para plataforma (primária, secundária, fundo, texto)
+- [x] Seletor de cores para proposta (cabeçalho, acentos, fundo, texto)
+- [x] Seletor de fontes para proposta (título, corpo, valores monetários)
+- [x] Preview em tempo real das configurações na proposta
+- [x] Integrar configurações no Step 4 (Preview) e na visualização salva
+- [x] Testes vitest para os endpoints de configurações

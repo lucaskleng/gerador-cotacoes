@@ -1,6 +1,6 @@
 import { eq, desc, and, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, quotations, InsertQuotation, Quotation } from "../drizzle/schema";
+import { InsertUser, users, quotations, InsertQuotation, Quotation, designSettings, DesignSettings, InsertDesignSettings } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -195,4 +195,51 @@ export async function updateQuotationStatus(
   status: "draft" | "sent" | "approved" | "rejected" | "expired"
 ): Promise<boolean> {
   return updateQuotation(id, userId, { status });
+}
+
+// ─── Design Settings Helpers ───────────────────────────────────────────────
+
+/**
+ * Get design settings for a user. Returns undefined if none saved yet.
+ */
+export async function getDesignSettings(userId: number): Promise<DesignSettings | undefined> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const result = await db
+    .select()
+    .from(designSettings)
+    .where(eq(designSettings.userId, userId))
+    .limit(1);
+
+  return result.length > 0 ? result[0] : undefined;
+}
+
+/**
+ * Upsert design settings for a user (create or update).
+ */
+export async function upsertDesignSettings(
+  userId: number,
+  data: Omit<InsertDesignSettings, "id" | "userId" | "createdAt" | "updatedAt">
+): Promise<void> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const existing = await db
+    .select({ id: designSettings.id })
+    .from(designSettings)
+    .where(eq(designSettings.userId, userId))
+    .limit(1);
+
+  if (existing.length > 0) {
+    await db
+      .update(designSettings)
+      .set(data)
+      .where(eq(designSettings.userId, userId));
+  } else {
+    await db.insert(designSettings).values({
+      userId,
+      ...data,
+    });
+  }
 }

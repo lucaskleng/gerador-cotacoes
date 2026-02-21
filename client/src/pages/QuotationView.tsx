@@ -1,6 +1,6 @@
 /*
  * QuotationView — Visualizar Cotação Salva
- * Loads a saved quotation from the database and renders the preview
+ * Applies user's design settings (colors, fonts, logo, layout) to the document.
  */
 
 import { useAuth } from "@/_core/hooks/useAuth";
@@ -8,15 +8,17 @@ import { trpc } from "@/lib/trpc";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
-  FileText,
   ArrowLeft,
   Printer,
   Edit3,
-  LayoutList,
-  Download,
 } from "lucide-react";
 import { useLocation, useParams } from "wouter";
 import { useMemo } from "react";
+import {
+  DEFAULT_COMPANY,
+  DEFAULT_PROPOSAL_DESIGN,
+} from "../../../shared/designDefaults";
+import type { CompanyBranding, ProposalDesign } from "../../../shared/designDefaults";
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat("pt-BR", {
@@ -47,6 +49,29 @@ export default function QuotationView() {
     { id: Number(id) },
     { enabled: isAuthenticated && !!id }
   );
+
+  // Load design settings
+  const { data: designData } = trpc.design.get.useQuery(undefined, {
+    staleTime: 1000 * 60 * 5,
+    enabled: isAuthenticated,
+  });
+
+  const company: CompanyBranding = designData?.company ?? DEFAULT_COMPANY;
+  const d: ProposalDesign = designData?.proposalDesign ?? DEFAULT_PROPOSAL_DESIGN;
+
+  const fontSizeMap: Record<string, { base: string; sm: string; xs: string; title: string }> = {
+    small: { base: "text-xs", sm: "text-[11px]", xs: "text-[10px]", title: "text-sm" },
+    medium: { base: "text-sm", sm: "text-xs", xs: "text-[10px]", title: "text-base" },
+    large: { base: "text-base", sm: "text-sm", xs: "text-xs", title: "text-lg" },
+  };
+  const fs = fontSizeMap[d.fontSize] || fontSizeMap.medium;
+
+  const headerAlign =
+    d.headerLayout === "center"
+      ? "text-center justify-center"
+      : d.headerLayout === "right"
+        ? "text-right justify-end"
+        : "text-left justify-start";
 
   const vars: Record<string, string> = useMemo(() => {
     if (!quotation) return {} as Record<string, string>;
@@ -101,6 +126,10 @@ export default function QuotationView() {
   const items = Array.isArray(quotation.items) ? quotation.items : [];
   const texts = quotation.texts;
   const conditions = quotation.conditions;
+  const subtotalVal = parseFloat(String(quotation.subtotal ?? 0));
+  const discountVal = parseFloat(String(quotation.totalDiscount ?? 0));
+  const grandTotalVal = parseFloat(String(quotation.grandTotal));
+  const freightVal = conditions?.freightValue ? parseFloat(String(conditions.freightValue)) : 0;
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -151,181 +180,323 @@ export default function QuotationView() {
       {/* Preview Content */}
       <main className="flex-1 container py-6">
         <div className="max-w-3xl mx-auto">
-          <Card className="overflow-hidden">
-            <CardContent className="p-8 space-y-6">
-              {/* Header Text */}
-              {texts?.headerText && (
-                <div className="text-center border-b border-border pb-6">
-                  <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed">
-                    {texts.headerText}
-                  </pre>
+          <Card className="overflow-hidden shadow-lg print:shadow-none print:border-0">
+            <div
+              className="p-8 space-y-8 print:p-6"
+              style={{
+                backgroundColor: d.bodyBgColor,
+                color: d.bodyTextColor,
+                fontFamily: d.bodyFont,
+              }}
+            >
+              {/* ─── Header ─────────────────────────────────────────── */}
+              <div
+                className="rounded-lg px-6 py-5 -mx-8 -mt-8 print:-mx-6 print:-mt-6"
+                style={{
+                  backgroundColor: d.headerBgColor,
+                  color: d.headerTextColor,
+                }}
+              >
+                <div className={`flex items-center gap-4 ${headerAlign}`}>
+                  {d.showLogo && company.logoUrl && (
+                    <img
+                      src={company.logoUrl}
+                      alt="Logo"
+                      className="w-14 h-14 object-contain rounded-md"
+                      style={{ backgroundColor: "rgba(255,255,255,0.1)" }}
+                    />
+                  )}
+                  {d.showLogo && !company.logoUrl && (
+                    <div
+                      className="w-14 h-14 rounded-md flex items-center justify-center"
+                      style={{ backgroundColor: "rgba(255,255,255,0.15)" }}
+                    >
+                      <span className="text-xl font-bold" style={{ color: d.headerTextColor }}>
+                        {(company.companyName || "E").charAt(0)}
+                      </span>
+                    </div>
+                  )}
+                  <div>
+                    <h2
+                      className="text-lg font-bold leading-tight"
+                      style={{ fontFamily: d.titleFont }}
+                    >
+                      {company.companyName || (texts?.headerText ? texts.headerText.split("\n")[0] : "")}
+                    </h2>
+                    {company.companySubtitle && (
+                      <p className="text-sm opacity-80">{company.companySubtitle}</p>
+                    )}
+                    {(company.phone || company.email) && (
+                      <p className="text-xs opacity-60 mt-0.5">
+                        {[company.phone, company.email].filter(Boolean).join(" • ")}
+                      </p>
+                    )}
+                  </div>
                 </div>
+              </div>
+
+              {d.showBorderLines && (
+                <div className="h-1 rounded-full -mx-8 print:-mx-6" style={{ backgroundColor: d.accentColor }} />
               )}
 
-              {/* Quotation Number & Date */}
-              <div className="flex justify-between items-start">
+              {/* ─── Proposal Number & Date ─────────────────────────── */}
+              <div className="flex items-start justify-between">
                 <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider">
-                    Proposta Nº
-                  </p>
-                  <p className="font-mono text-lg font-bold text-primary">
-                    {quotation.quotationNumber}
+                  <h3
+                    className={`${fs.title} font-bold uppercase tracking-wider`}
+                    style={{ fontFamily: d.titleFont, color: d.accentColor }}
+                  >
+                    Proposta Comercial
+                  </h3>
+                  <p className={`${fs.xs} mt-0.5 opacity-60`}>
+                    {formatDate(quotation.quotationDate)} — Validade: {quotation.validityDays} dias
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider">
-                    Data
-                  </p>
-                  <p className="font-mono text-sm">
-                    {formatDate(quotation.quotationDate)}
-                  </p>
-                </div>
-              </div>
-
-              {/* Customer Info */}
-              <div className="bg-secondary/50 rounded-lg p-4">
-                <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">
-                  Cliente
-                </p>
-                <p className="font-semibold">{quotation.customerName}</p>
-                {quotation.customerCompany && (
-                  <p className="text-sm text-muted-foreground">
-                    {quotation.customerCompany}
-                  </p>
-                )}
-                {quotation.customerCNPJ && (
-                  <p className="text-sm text-muted-foreground font-mono">
-                    CNPJ: {quotation.customerCNPJ}
-                  </p>
-                )}
-                {quotation.customerAddress && (
-                  <p className="text-sm text-muted-foreground">
-                    {quotation.customerAddress}
-                  </p>
-                )}
-                <div className="flex gap-4 mt-1">
-                  {quotation.customerEmail && (
-                    <p className="text-sm text-muted-foreground">
-                      {quotation.customerEmail}
-                    </p>
-                  )}
-                  {quotation.customerPhone && (
-                    <p className="text-sm text-muted-foreground">
-                      {quotation.customerPhone}
-                    </p>
+                  <div className={`${fs.xs} opacity-50 uppercase tracking-wider mb-0.5`}>
+                    Proposta Nº
+                  </div>
+                  <div
+                    className={`${fs.title} font-bold`}
+                    style={{ fontFamily: d.monoFont, color: d.accentColor }}
+                  >
+                    {quotation.quotationNumber}
+                  </div>
+                  {quotation.status === "approved" && (
+                    <div
+                      className="mt-1.5 inline-block px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider rounded"
+                      style={{
+                        backgroundColor: d.accentColor + "20",
+                        color: d.accentColor,
+                      }}
+                    >
+                      Aprovada
+                    </div>
                   )}
                 </div>
               </div>
 
-              {/* Reference */}
-              {quotation.reference && (
+              {/* ─── Customer Info ───────────────────────────────────── */}
+              <div
+                className="grid grid-cols-2 gap-6 rounded-lg p-4"
+                style={{ backgroundColor: d.tableStripedBg }}
+              >
                 <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
+                  <div
+                    className={`${fs.xs} uppercase tracking-wider mb-2 font-semibold`}
+                    style={{ color: d.accentColor }}
+                  >
+                    Cliente
+                  </div>
+                  <div className={`${fs.base} font-semibold`}>{quotation.customerName}</div>
+                  {quotation.customerCompany && (
+                    <div className={`${fs.sm} opacity-70`}>{quotation.customerCompany}</div>
+                  )}
+                  {quotation.customerCNPJ && (
+                    <div className={`${fs.sm} opacity-70`}>CNPJ: {quotation.customerCNPJ}</div>
+                  )}
+                </div>
+                <div>
+                  <div
+                    className={`${fs.xs} uppercase tracking-wider mb-2 font-semibold`}
+                    style={{ color: d.accentColor }}
+                  >
+                    Contato
+                  </div>
+                  {quotation.customerEmail && <div className={fs.base}>{quotation.customerEmail}</div>}
+                  {quotation.customerPhone && <div className={fs.base}>{quotation.customerPhone}</div>}
+                  {quotation.customerAddress && (
+                    <div className={`${fs.xs} opacity-60 mt-1`}>{quotation.customerAddress}</div>
+                  )}
+                </div>
+              </div>
+
+              {/* ─── Reference ──────────────────────────────────────── */}
+              {quotation.reference && (
+                <div className="rounded-lg p-4" style={{ backgroundColor: d.tableStripedBg }}>
+                  <div
+                    className={`${fs.xs} uppercase tracking-wider mb-1 font-semibold`}
+                    style={{ color: d.accentColor }}
+                  >
                     Referência
-                  </p>
-                  <p className="text-sm font-medium">{quotation.reference}</p>
+                  </div>
+                  <div className={`${fs.base} font-medium`}>{quotation.reference}</div>
                 </div>
               )}
 
-              {/* Intro Notes */}
+              {/* ─── Intro Notes ────────────────────────────────────── */}
               {texts?.introNotes && (
-                <div className="text-sm leading-relaxed whitespace-pre-wrap">
+                <div className={`${fs.base} whitespace-pre-wrap leading-relaxed`}>
                   {interpolateText(texts.introNotes, vars)}
                 </div>
               )}
 
-              {/* Items Table */}
+              {/* ─── Items Table ────────────────────────────────────── */}
               <div className="overflow-x-auto">
-                <table className="w-full text-sm">
+                <table className={`w-full ${fs.base}`} style={{ borderCollapse: "collapse" }}>
                   <thead>
-                    <tr className="border-b-2 border-primary/20">
-                      <th className="text-left py-2 text-xs uppercase tracking-wider text-muted-foreground">
+                    <tr
+                      style={{
+                        backgroundColor: d.tableHeaderBgColor,
+                        color: d.tableHeaderTextColor,
+                      }}
+                    >
+                      <th className={`text-left py-2.5 px-3 ${fs.xs} font-semibold uppercase tracking-wider rounded-tl-md`}>
                         #
                       </th>
-                      <th className="text-left py-2 text-xs uppercase tracking-wider text-muted-foreground">
+                      <th className={`text-left py-2.5 px-3 ${fs.xs} font-semibold uppercase tracking-wider`}>
                         Descrição
                       </th>
-                      <th className="text-center py-2 text-xs uppercase tracking-wider text-muted-foreground">
+                      <th className={`text-center py-2.5 px-3 ${fs.xs} font-semibold uppercase tracking-wider`}>
                         Qtd
                       </th>
-                      <th className="text-right py-2 text-xs uppercase tracking-wider text-muted-foreground">
+                      <th className={`text-right py-2.5 px-3 ${fs.xs} font-semibold uppercase tracking-wider`}>
                         Unitário
                       </th>
-                      <th className="text-right py-2 text-xs uppercase tracking-wider text-muted-foreground">
+                      <th className={`text-right py-2.5 px-3 ${fs.xs} font-semibold uppercase tracking-wider rounded-tr-md`}>
                         Subtotal
                       </th>
                     </tr>
                   </thead>
                   <tbody>
                     {items.map((item: any, idx: number) => (
-                      <tr key={item.id || idx} className="border-b border-border/50">
-                        <td className="py-2 text-muted-foreground">{idx + 1}</td>
-                        <td className="py-2">{item.description || "—"}</td>
-                        <td className="py-2 text-center font-mono">
+                      <tr
+                        key={item.id || idx}
+                        style={{
+                          backgroundColor: idx % 2 === 1 ? d.tableStripedBg : "transparent",
+                          borderBottom: `1px solid ${d.tableBorderColor}`,
+                        }}
+                      >
+                        <td className="py-2.5 px-3 opacity-50" style={{ fontFamily: d.monoFont }}>
+                          {String(idx + 1).padStart(2, "0")}
+                        </td>
+                        <td className="py-2.5 px-3 font-medium">{item.description || "—"}</td>
+                        <td className="py-2.5 px-3 text-center tabular-nums" style={{ fontFamily: d.monoFont }}>
                           {item.quantity} {item.unit}
                         </td>
-                        <td className="py-2 text-right font-mono">
+                        <td className="py-2.5 px-3 text-right tabular-nums" style={{ fontFamily: d.monoFont }}>
                           {formatCurrency(item.unitPrice)}
                         </td>
-                        <td className="py-2 text-right font-mono font-medium">
+                        <td className="py-2.5 px-3 text-right tabular-nums font-medium" style={{ fontFamily: d.monoFont }}>
                           {formatCurrency(item.subtotal)}
                         </td>
                       </tr>
                     ))}
                   </tbody>
-                  <tfoot>
-                    <tr className="border-t-2 border-primary/20">
-                      <td colSpan={4} className="py-2 text-right font-semibold">
-                        Total Geral
-                      </td>
-                      <td className="py-2 text-right font-mono text-lg font-bold text-primary">
-                        {formatCurrency(parseFloat(String(quotation.grandTotal)))}
-                      </td>
-                    </tr>
-                  </tfoot>
                 </table>
+
+                {/* Totals */}
+                <div className="mt-4 flex flex-col items-end gap-1">
+                  {subtotalVal > 0 && (
+                    <div className={`flex items-center gap-6 ${fs.base}`}>
+                      <span className="opacity-60">Subtotal</span>
+                      <span className="w-28 text-right tabular-nums" style={{ fontFamily: d.monoFont }}>
+                        {formatCurrency(subtotalVal)}
+                      </span>
+                    </div>
+                  )}
+                  {discountVal > 0 && (
+                    <div className={`flex items-center gap-6 ${fs.base}`}>
+                      <span className="opacity-60">Descontos</span>
+                      <span className="w-28 text-right tabular-nums text-red-600" style={{ fontFamily: d.monoFont }}>
+                        -{formatCurrency(discountVal)}
+                      </span>
+                    </div>
+                  )}
+                  {freightVal > 0 && (
+                    <div className={`flex items-center gap-6 ${fs.base}`}>
+                      <span className="opacity-60">Frete ({conditions?.freight})</span>
+                      <span className="w-28 text-right tabular-nums" style={{ fontFamily: d.monoFont }}>
+                        {formatCurrency(freightVal)}
+                      </span>
+                    </div>
+                  )}
+                  <div
+                    className="flex items-center gap-6 font-bold pt-2 mt-2"
+                    style={{
+                      borderTop: `2px solid ${d.accentColor}`,
+                      fontSize: d.fontSize === "large" ? "1.125rem" : d.fontSize === "small" ? "0.875rem" : "1rem",
+                    }}
+                  >
+                    <span>Total</span>
+                    <span
+                      className="w-28 text-right tabular-nums"
+                      style={{ fontFamily: d.monoFont, color: d.accentColor }}
+                    >
+                      {formatCurrency(grandTotalVal)}
+                    </span>
+                  </div>
+                </div>
               </div>
 
-              {/* Commercial Notes */}
+              {/* ─── Commercial Notes ───────────────────────────────── */}
               {texts?.commercialNotes && (
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">
+                <div className="space-y-1">
+                  <div
+                    className={`${fs.xs} uppercase tracking-wider font-semibold mb-2`}
+                    style={{ color: d.accentColor }}
+                  >
                     Condições Comerciais
-                  </p>
-                  <div className="text-sm leading-relaxed whitespace-pre-wrap bg-secondary/30 rounded-lg p-4">
+                  </div>
+                  <div
+                    className={`${fs.base} whitespace-pre-wrap leading-relaxed rounded-lg p-4`}
+                    style={{ backgroundColor: d.tableStripedBg }}
+                  >
                     {interpolateText(texts.commercialNotes, vars)}
                   </div>
                 </div>
               )}
 
-              {/* Technical Notes */}
+              {/* ─── Technical Notes ─────────────────────────────────── */}
               {texts?.technicalNotes && (
-                <div>
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider mb-2">
-                    Notas Técnicas
-                  </p>
-                  <div className="text-sm leading-relaxed whitespace-pre-wrap">
+                <div className="space-y-1">
+                  <div
+                    className={`${fs.xs} uppercase tracking-wider font-semibold mb-2`}
+                    style={{ color: d.accentColor }}
+                  >
+                    Informações Técnicas
+                  </div>
+                  <div className={`${fs.base} whitespace-pre-wrap leading-relaxed`}>
                     {interpolateText(texts.technicalNotes, vars)}
                   </div>
                 </div>
               )}
 
-              {/* Closing Notes */}
+              {/* ─── Closing ─────────────────────────────────────────── */}
               {texts?.closingNotes && (
-                <div className="text-sm leading-relaxed whitespace-pre-wrap border-t border-border pt-4">
+                <div
+                  className={`${fs.base} whitespace-pre-wrap leading-relaxed pt-4`}
+                  style={{ borderTop: `1px solid ${d.tableBorderColor}` }}
+                >
                   {interpolateText(texts.closingNotes, vars)}
                 </div>
               )}
 
-              {/* Footer */}
-              {texts?.footerText && (
-                <div className="text-center text-xs text-muted-foreground border-t border-border pt-4">
-                  <pre className="whitespace-pre-wrap font-sans">
-                    {texts.footerText}
-                  </pre>
-                </div>
+              {/* ─── Footer ──────────────────────────────────────────── */}
+              {d.showBorderLines && (
+                <div className="h-1 rounded-full -mx-8 print:-mx-6" style={{ backgroundColor: d.accentColor }} />
               )}
-            </CardContent>
+              <div
+                className="rounded-b-lg px-6 py-4 -mx-8 -mb-8 print:-mx-6 print:-mb-6 text-center"
+                style={{
+                  backgroundColor: d.headerBgColor,
+                  color: d.headerTextColor,
+                }}
+              >
+                <div className={fs.xs} style={{ opacity: 0.8 }}>
+                  {company.companyName || (texts?.footerText ?? "")}
+                  {company.address && ` — ${company.address}`}
+                </div>
+                {(company.phone || company.email || company.website) && (
+                  <div className="text-[10px] mt-0.5" style={{ opacity: 0.6 }}>
+                    {[company.phone, company.email, company.website].filter(Boolean).join(" • ")}
+                  </div>
+                )}
+                <div className="text-[10px] mt-1" style={{ opacity: 0.5 }}>
+                  Validade: {quotation.validityDays} dias a partir de {formatDate(quotation.quotationDate)}
+                </div>
+              </div>
+            </div>
           </Card>
         </div>
       </main>

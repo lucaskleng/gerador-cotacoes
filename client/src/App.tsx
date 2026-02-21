@@ -7,6 +7,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 import QuotationList from "./pages/QuotationList";
 import QuotationView from "./pages/QuotationView";
+import Settings from "./pages/Settings";
 
 function Router() {
   return (
@@ -15,6 +16,7 @@ function Router() {
       <Route path={"/cotacoes"} component={QuotationList} />
       <Route path={"/cotacao/:id"} component={QuotationView} />
       <Route path={"/editar/:id"} component={QuotationView} />
+      <Route path={"/configuracoes"} component={Settings} />
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>

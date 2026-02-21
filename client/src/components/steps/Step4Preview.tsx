@@ -1,8 +1,6 @@
 /*
  * Step 4 — Finalizar / Preview
- * Design: Clean Commerce / Swiss Design
- * Print-ready preview of the quotation document
- * Save to database via tRPC + Approve simulation
+ * Applies user's design settings (colors, fonts, logo, layout) to the document.
  */
 
 import { useQuotationStore } from "@/store/quotationStore";
@@ -31,6 +29,11 @@ import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 import { getLoginUrl } from "@/const";
+import {
+  DEFAULT_COMPANY,
+  DEFAULT_PROPOSAL_DESIGN,
+} from "../../../../shared/designDefaults";
+import type { CompanyBranding, ProposalDesign } from "../../../../shared/designDefaults";
 
 export default function Step4Preview() {
   const {
@@ -53,6 +56,22 @@ export default function Step4Preview() {
   const [savedNumber, setSavedNumber] = useState<string | null>(null);
   const quotationNumber = useMemo(() => generateQuotationNumber(), []);
 
+  // Load design settings
+  const { data: designData } = trpc.design.get.useQuery(undefined, {
+    staleTime: 1000 * 60 * 5,
+    enabled: isAuthenticated,
+  });
+
+  const company: CompanyBranding = designData?.company ?? DEFAULT_COMPANY;
+  const d: ProposalDesign = designData?.proposalDesign ?? DEFAULT_PROPOSAL_DESIGN;
+
+  const fontSizeMap: Record<string, { base: string; sm: string; xs: string; title: string }> = {
+    small: { base: "text-xs", sm: "text-[11px]", xs: "text-[10px]", title: "text-sm" },
+    medium: { base: "text-sm", sm: "text-xs", xs: "text-[10px]", title: "text-base" },
+    large: { base: "text-base", sm: "text-sm", xs: "text-xs", title: "text-lg" },
+  };
+  const fs = fontSizeMap[d.fontSize] || fontSizeMap.medium;
+
   const saveMutation = trpc.quotation.create.useMutation({
     onSuccess: (data) => {
       setSavedId(data.id);
@@ -62,13 +81,10 @@ export default function Step4Preview() {
       });
     },
     onError: (err) => {
-      toast.error("Erro ao salvar cotação", {
-        description: err.message,
-      });
+      toast.error("Erro ao salvar cotação", { description: err.message });
     },
   });
 
-  // Build variables map
   const variables: Record<string, string | number> = {
     customerName: info.customerName || "[Nome do Cliente]",
     customerEmail: info.customerEmail || "[E-mail]",
@@ -90,9 +106,7 @@ export default function Step4Preview() {
     (i) => i.description.trim() && i.quantity > 0 && i.unitPrice > 0
   );
 
-  const handlePrint = () => {
-    window.print();
-  };
+  const handlePrint = () => window.print();
 
   const handleSave = (status: "draft" | "approved" = "draft") => {
     saveMutation.mutate({
@@ -157,6 +171,13 @@ export default function Step4Preview() {
     toast.info("Nova cotação iniciada.");
   };
 
+  const headerAlign =
+    d.headerLayout === "center"
+      ? "text-center justify-center"
+      : d.headerLayout === "right"
+        ? "text-right justify-end"
+        : "text-left justify-start";
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
@@ -203,12 +224,7 @@ export default function Step4Preview() {
                   Aprovar e Salvar
                 </Button>
               ) : (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={handleNewQuotation}
-                  className="gap-1.5"
-                >
+                <Button size="sm" variant="outline" onClick={handleNewQuotation} className="gap-1.5">
                   <RotateCcw className="w-4 h-4" />
                   Nova Cotação
                 </Button>
@@ -222,12 +238,7 @@ export default function Step4Preview() {
                   Aprovar Cotação
                 </Button>
               ) : (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={handleNewQuotation}
-                  className="gap-1.5"
-                >
+                <Button size="sm" variant="outline" onClick={handleNewQuotation} className="gap-1.5">
                   <RotateCcw className="w-4 h-4" />
                   Nova Cotação
                 </Button>
@@ -273,9 +284,7 @@ export default function Step4Preview() {
           <div className="flex items-center gap-3">
             <LogIn className="w-5 h-5 text-blue-600" />
             <div>
-              <p className="text-sm font-medium text-blue-900">
-                Faça login para salvar
-              </p>
+              <p className="text-sm font-medium text-blue-900">Faça login para salvar</p>
               <p className="text-xs text-blue-700">
                 Suas cotações serão salvas no banco de dados para consulta futura.
               </p>
@@ -299,9 +308,7 @@ export default function Step4Preview() {
         >
           <CheckCircle2 className="w-5 h-5 text-[oklch(0.50_0.15_145)]" />
           <div>
-            <p className="text-sm font-medium text-[oklch(0.30_0.05_145)]">
-              Cotação Aprovada
-            </p>
+            <p className="text-sm font-medium text-[oklch(0.30_0.05_145)]">Cotação Aprovada</p>
             <p className="text-xs text-[oklch(0.40_0.08_145)]">
               Número: {quotationNumber} — {formatDateShort(info.createdAt)}
             </p>
@@ -309,105 +316,190 @@ export default function Step4Preview() {
         </motion.div>
       )}
 
-      {/* Document Preview */}
+      {/* ═══════════════════════════════════════════════════════════════════
+          DOCUMENT PREVIEW — styled with user's design settings
+          ═══════════════════════════════════════════════════════════════════ */}
       <Card className="shadow-lg border-border/60 overflow-hidden print:shadow-none print:border-0">
-        <div className="bg-white p-8 md:p-12 space-y-8 print:p-6" id="quotation-document">
-          {/* Header */}
-          <div className="border-b-2 border-primary pb-6">
-            <div className="flex items-start justify-between">
+        <div
+          className="p-8 md:p-12 space-y-8 print:p-6"
+          id="quotation-document"
+          style={{
+            backgroundColor: d.bodyBgColor,
+            color: d.bodyTextColor,
+            fontFamily: d.bodyFont,
+          }}
+        >
+          {/* ─── Header ─────────────────────────────────────────────── */}
+          <div
+            className="rounded-lg px-6 py-5 -mx-8 -mt-8 md:-mx-12 md:-mt-12 print:-mx-6 print:-mt-6"
+            style={{
+              backgroundColor: d.headerBgColor,
+              color: d.headerTextColor,
+            }}
+          >
+            <div className={`flex items-center gap-4 ${headerAlign}`}>
+              {d.showLogo && company.logoUrl && (
+                <img
+                  src={company.logoUrl}
+                  alt="Logo"
+                  className="w-14 h-14 object-contain rounded-md"
+                  style={{ backgroundColor: "rgba(255,255,255,0.1)" }}
+                />
+              )}
+              {d.showLogo && !company.logoUrl && (
+                <div
+                  className="w-14 h-14 rounded-md flex items-center justify-center"
+                  style={{ backgroundColor: "rgba(255,255,255,0.15)" }}
+                >
+                  <span className="text-xl font-bold" style={{ color: d.headerTextColor }}>
+                    {(company.companyName || "E").charAt(0)}
+                  </span>
+                </div>
+              )}
               <div>
-                <pre className="text-sm whitespace-pre-wrap font-sans leading-relaxed text-foreground">
-                  {interpolateTemplate(texts.headerText, variables)}
-                </pre>
-              </div>
-              <div className="text-right">
-                <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
-                  Proposta Nº
-                </div>
-                <div className="font-mono text-sm font-semibold text-primary">
-                  {savedNumber || quotationNumber}
-                </div>
-                <div className="text-xs text-muted-foreground mt-1">
-                  {formatDate(info.createdAt)}
-                </div>
-                {approved && (
-                  <div className="mt-2 inline-block px-2 py-0.5 bg-[oklch(0.95_0.05_145)] text-[oklch(0.40_0.12_145)] text-[10px] font-semibold uppercase tracking-wider rounded">
-                    Aprovada
-                  </div>
+                <h2
+                  className="text-lg font-bold leading-tight"
+                  style={{ fontFamily: d.titleFont }}
+                >
+                  {company.companyName || interpolateTemplate(texts.headerText, variables)}
+                </h2>
+                {company.companySubtitle && (
+                  <p className="text-sm opacity-80">{company.companySubtitle}</p>
+                )}
+                {(company.phone || company.email) && (
+                  <p className="text-xs opacity-60 mt-0.5">
+                    {[company.phone, company.email].filter(Boolean).join(" • ")}
+                  </p>
                 )}
               </div>
             </div>
           </div>
 
-          {/* Customer Info */}
-          <div className="grid grid-cols-2 gap-6 text-sm">
+          {d.showBorderLines && (
+            <div className="h-1 rounded-full -mx-8 md:-mx-12 print:-mx-6" style={{ backgroundColor: d.accentColor }} />
+          )}
+
+          {/* ─── Proposal Number & Date ─────────────────────────────── */}
+          <div className="flex items-start justify-between">
             <div>
-              <div className="text-xs text-muted-foreground uppercase tracking-wider mb-2">
-                Cliente
-              </div>
-              <div className="font-semibold">{info.customerName || "—"}</div>
-              {info.customerCompany && (
-                <div className="text-muted-foreground">{info.customerCompany}</div>
-              )}
-              {info.customerCNPJ && (
-                <div className="text-muted-foreground">CNPJ: {info.customerCNPJ}</div>
-              )}
+              <h3
+                className={`${fs.title} font-bold uppercase tracking-wider`}
+                style={{ fontFamily: d.titleFont, color: d.accentColor }}
+              >
+                Proposta Comercial
+              </h3>
+              <p className={`${fs.xs} mt-0.5 opacity-60`}>
+                {formatDate(info.createdAt)} — Validade: {info.validityDays} dias
+              </p>
             </div>
-            <div>
-              <div className="text-xs text-muted-foreground uppercase tracking-wider mb-2">
-                Contato
+            <div className="text-right">
+              <div className={`${fs.xs} opacity-50 uppercase tracking-wider mb-0.5`}>
+                Proposta Nº
               </div>
-              {info.customerEmail && <div>{info.customerEmail}</div>}
-              {info.customerPhone && <div>{info.customerPhone}</div>}
-              {info.customerAddress && (
-                <div className="text-muted-foreground text-xs mt-1">
-                  {info.customerAddress}
+              <div
+                className={`${fs.title} font-bold`}
+                style={{ fontFamily: d.monoFont, color: d.accentColor }}
+              >
+                {savedNumber || quotationNumber}
+              </div>
+              {approved && (
+                <div
+                  className="mt-1.5 inline-block px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider rounded"
+                  style={{
+                    backgroundColor: d.accentColor + "20",
+                    color: d.accentColor,
+                  }}
+                >
+                  Aprovada
                 </div>
               )}
             </div>
           </div>
 
-          {/* Reference */}
+          {/* ─── Customer Info ───────────────────────────────────────── */}
+          <div
+            className="grid grid-cols-2 gap-6 rounded-lg p-4"
+            style={{ backgroundColor: d.tableStripedBg }}
+          >
+            <div>
+              <div
+                className={`${fs.xs} uppercase tracking-wider mb-2 font-semibold`}
+                style={{ color: d.accentColor }}
+              >
+                Cliente
+              </div>
+              <div className={`${fs.base} font-semibold`}>{info.customerName || "—"}</div>
+              {info.customerCompany && (
+                <div className={`${fs.sm} opacity-70`}>{info.customerCompany}</div>
+              )}
+              {info.customerCNPJ && (
+                <div className={`${fs.sm} opacity-70`}>CNPJ: {info.customerCNPJ}</div>
+              )}
+            </div>
+            <div>
+              <div
+                className={`${fs.xs} uppercase tracking-wider mb-2 font-semibold`}
+                style={{ color: d.accentColor }}
+              >
+                Contato
+              </div>
+              {info.customerEmail && <div className={fs.base}>{info.customerEmail}</div>}
+              {info.customerPhone && <div className={fs.base}>{info.customerPhone}</div>}
+              {info.customerAddress && (
+                <div className={`${fs.xs} opacity-60 mt-1`}>{info.customerAddress}</div>
+              )}
+            </div>
+          </div>
+
+          {/* ─── Reference ──────────────────────────────────────────── */}
           {info.reference && (
-            <div className="bg-muted/40 rounded-lg p-4">
-              <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">
+            <div className="rounded-lg p-4" style={{ backgroundColor: d.tableStripedBg }}>
+              <div
+                className={`${fs.xs} uppercase tracking-wider mb-1 font-semibold`}
+                style={{ color: d.accentColor }}
+              >
                 Referência
               </div>
-              <div className="text-sm font-medium">{info.reference}</div>
+              <div className={`${fs.base} font-medium`}>{info.reference}</div>
             </div>
           )}
 
-          {/* Intro Notes */}
-          <div className="text-sm whitespace-pre-wrap leading-relaxed">
+          {/* ─── Intro Notes ────────────────────────────────────────── */}
+          <div className={`${fs.base} whitespace-pre-wrap leading-relaxed`}>
             {interpolateTemplate(texts.introNotes, variables)}
           </div>
 
-          {/* Items Table */}
+          {/* ─── Items Table ────────────────────────────────────────── */}
           <div>
-            <table className="w-full text-sm">
+            <table className={`w-full ${fs.base}`} style={{ borderCollapse: "collapse" }}>
               <thead>
-                <tr className="border-b-2 border-primary">
-                  <th className="text-left py-2 text-xs font-semibold text-primary uppercase tracking-wider">
+                <tr
+                  style={{
+                    backgroundColor: d.tableHeaderBgColor,
+                    color: d.tableHeaderTextColor,
+                  }}
+                >
+                  <th className={`text-left py-2.5 px-3 ${fs.xs} font-semibold uppercase tracking-wider rounded-tl-md`}>
                     #
                   </th>
-                  <th className="text-left py-2 text-xs font-semibold text-primary uppercase tracking-wider">
+                  <th className={`text-left py-2.5 px-3 ${fs.xs} font-semibold uppercase tracking-wider`}>
                     Descrição
                   </th>
-                  <th className="text-center py-2 text-xs font-semibold text-primary uppercase tracking-wider">
+                  <th className={`text-center py-2.5 px-3 ${fs.xs} font-semibold uppercase tracking-wider`}>
                     Unid.
                   </th>
-                  <th className="text-right py-2 text-xs font-semibold text-primary uppercase tracking-wider">
+                  <th className={`text-right py-2.5 px-3 ${fs.xs} font-semibold uppercase tracking-wider`}>
                     Qtd.
                   </th>
-                  <th className="text-right py-2 text-xs font-semibold text-primary uppercase tracking-wider">
+                  <th className={`text-right py-2.5 px-3 ${fs.xs} font-semibold uppercase tracking-wider`}>
                     Preço Unit.
                   </th>
                   {validItems.some((i) => i.discount > 0) && (
-                    <th className="text-right py-2 text-xs font-semibold text-primary uppercase tracking-wider">
+                    <th className={`text-right py-2.5 px-3 ${fs.xs} font-semibold uppercase tracking-wider`}>
                       Desc.
                     </th>
                   )}
-                  <th className="text-right py-2 text-xs font-semibold text-primary uppercase tracking-wider">
+                  <th className={`text-right py-2.5 px-3 ${fs.xs} font-semibold uppercase tracking-wider rounded-tr-md`}>
                     Subtotal
                   </th>
                 </tr>
@@ -416,27 +508,28 @@ export default function Step4Preview() {
                 {validItems.map((item, index) => (
                   <tr
                     key={item.id}
-                    className="border-b border-border/40 hover:bg-muted/20"
+                    style={{
+                      backgroundColor: index % 2 === 1 ? d.tableStripedBg : "transparent",
+                      borderBottom: `1px solid ${d.tableBorderColor}`,
+                    }}
                   >
-                    <td className="py-2.5 text-muted-foreground font-mono text-xs">
+                    <td className="py-2.5 px-3 opacity-50" style={{ fontFamily: d.monoFont }}>
                       {String(index + 1).padStart(2, "0")}
                     </td>
-                    <td className="py-2.5 font-medium">{item.description}</td>
-                    <td className="py-2.5 text-center text-muted-foreground">
-                      {item.unit}
-                    </td>
-                    <td className="py-2.5 text-right font-mono tabular-nums">
+                    <td className="py-2.5 px-3 font-medium">{item.description}</td>
+                    <td className="py-2.5 px-3 text-center opacity-70">{item.unit}</td>
+                    <td className="py-2.5 px-3 text-right tabular-nums" style={{ fontFamily: d.monoFont }}>
                       {item.quantity}
                     </td>
-                    <td className="py-2.5 text-right font-mono tabular-nums">
+                    <td className="py-2.5 px-3 text-right tabular-nums" style={{ fontFamily: d.monoFont }}>
                       {formatCurrency(item.unitPrice)}
                     </td>
                     {validItems.some((i) => i.discount > 0) && (
-                      <td className="py-2.5 text-right font-mono tabular-nums text-muted-foreground">
+                      <td className="py-2.5 px-3 text-right tabular-nums opacity-70" style={{ fontFamily: d.monoFont }}>
                         {item.discount > 0 ? `${item.discount}%` : "—"}
                       </td>
                     )}
-                    <td className="py-2.5 text-right font-mono tabular-nums font-medium">
+                    <td className="py-2.5 px-3 text-right tabular-nums font-medium" style={{ fontFamily: d.monoFont }}>
                       {formatCurrency(item.subtotal)}
                     </td>
                   </tr>
@@ -446,72 +539,105 @@ export default function Step4Preview() {
 
             {/* Totals */}
             <div className="mt-4 flex flex-col items-end gap-1">
-              <div className="flex items-center gap-6 text-sm">
-                <span className="text-muted-foreground">Subtotal</span>
-                <span className="font-mono tabular-nums w-28 text-right">
+              <div className={`flex items-center gap-6 ${fs.base}`}>
+                <span className="opacity-60">Subtotal</span>
+                <span className="w-28 text-right tabular-nums" style={{ fontFamily: d.monoFont }}>
                   {formatCurrency(subtotal)}
                 </span>
               </div>
               {totalDiscount > 0 && (
-                <div className="flex items-center gap-6 text-sm">
-                  <span className="text-muted-foreground">Descontos</span>
-                  <span className="font-mono tabular-nums w-28 text-right text-destructive">
+                <div className={`flex items-center gap-6 ${fs.base}`}>
+                  <span className="opacity-60">Descontos</span>
+                  <span className="w-28 text-right tabular-nums text-red-600" style={{ fontFamily: d.monoFont }}>
                     -{formatCurrency(totalDiscount)}
                   </span>
                 </div>
               )}
               {conditions.freightValue > 0 && (
-                <div className="flex items-center gap-6 text-sm">
-                  <span className="text-muted-foreground">
-                    Frete ({conditions.freight})
-                  </span>
-                  <span className="font-mono tabular-nums w-28 text-right">
+                <div className={`flex items-center gap-6 ${fs.base}`}>
+                  <span className="opacity-60">Frete ({conditions.freight})</span>
+                  <span className="w-28 text-right tabular-nums" style={{ fontFamily: d.monoFont }}>
                     {formatCurrency(conditions.freightValue)}
                   </span>
                 </div>
               )}
-              <div className="flex items-center gap-6 text-base font-bold pt-2 border-t-2 border-primary mt-2">
+              <div
+                className="flex items-center gap-6 font-bold pt-2 mt-2"
+                style={{
+                  borderTop: `2px solid ${d.accentColor}`,
+                  fontSize: d.fontSize === "large" ? "1.125rem" : d.fontSize === "small" ? "0.875rem" : "1rem",
+                }}
+              >
                 <span>Total</span>
-                <span className="font-mono tabular-nums w-28 text-right text-primary">
+                <span
+                  className="w-28 text-right tabular-nums"
+                  style={{ fontFamily: d.monoFont, color: d.accentColor }}
+                >
                   {formatCurrency(grandTotal)}
                 </span>
               </div>
             </div>
           </div>
 
-          {/* Commercial Notes */}
+          {/* ─── Commercial Notes ───────────────────────────────────── */}
           <div className="space-y-1">
-            <div className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mb-2">
+            <div
+              className={`${fs.xs} uppercase tracking-wider font-semibold mb-2`}
+              style={{ color: d.accentColor }}
+            >
               Condições Comerciais
             </div>
-            <div className="text-sm whitespace-pre-wrap leading-relaxed bg-muted/30 rounded-lg p-4">
+            <div
+              className={`${fs.base} whitespace-pre-wrap leading-relaxed rounded-lg p-4`}
+              style={{ backgroundColor: d.tableStripedBg }}
+            >
               {interpolateTemplate(texts.commercialNotes, variables)}
             </div>
           </div>
 
-          {/* Technical Notes */}
+          {/* ─── Technical Notes ─────────────────────────────────────── */}
           <div className="space-y-1">
-            <div className="text-xs text-muted-foreground uppercase tracking-wider font-semibold mb-2">
+            <div
+              className={`${fs.xs} uppercase tracking-wider font-semibold mb-2`}
+              style={{ color: d.accentColor }}
+            >
               Informações Técnicas
             </div>
-            <div className="text-sm whitespace-pre-wrap leading-relaxed">
+            <div className={`${fs.base} whitespace-pre-wrap leading-relaxed`}>
               {interpolateTemplate(texts.technicalNotes, variables)}
             </div>
           </div>
 
-          {/* Closing */}
-          <div className="text-sm whitespace-pre-wrap leading-relaxed pt-4 border-t border-border">
+          {/* ─── Closing ─────────────────────────────────────────────── */}
+          <div
+            className={`${fs.base} whitespace-pre-wrap leading-relaxed pt-4`}
+            style={{ borderTop: `1px solid ${d.tableBorderColor}` }}
+          >
             {interpolateTemplate(texts.closingNotes, variables)}
           </div>
 
-          {/* Footer */}
-          <div className="pt-6 border-t border-border text-center">
-            <div className="text-xs text-muted-foreground">
-              {interpolateTemplate(texts.footerText, variables)}
+          {/* ─── Footer ──────────────────────────────────────────────── */}
+          {d.showBorderLines && (
+            <div className="h-1 rounded-full -mx-8 md:-mx-12 print:-mx-6" style={{ backgroundColor: d.accentColor }} />
+          )}
+          <div
+            className="rounded-b-lg px-6 py-4 -mx-8 -mb-8 md:-mx-12 md:-mb-12 print:-mx-6 print:-mb-6 text-center"
+            style={{
+              backgroundColor: d.headerBgColor,
+              color: d.headerTextColor,
+            }}
+          >
+            <div className={fs.xs} style={{ opacity: 0.8 }}>
+              {company.companyName || interpolateTemplate(texts.footerText, variables)}
+              {company.address && ` — ${company.address}`}
             </div>
-            <div className="text-[10px] text-muted-foreground/60 mt-1">
-              Validade: {info.validityDays} dias a partir de{" "}
-              {formatDateShort(info.createdAt)}
+            {(company.phone || company.email || company.website) && (
+              <div className="text-[10px] mt-0.5" style={{ opacity: 0.6 }}>
+                {[company.phone, company.email, company.website].filter(Boolean).join(" • ")}
+              </div>
+            )}
+            <div className="text-[10px] mt-1" style={{ opacity: 0.5 }}>
+              Validade: {info.validityDays} dias a partir de {formatDateShort(info.createdAt)}
             </div>
           </div>
         </div>

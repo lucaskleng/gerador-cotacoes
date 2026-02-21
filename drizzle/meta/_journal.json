@@ -15,6 +15,13 @@
       "when": 1771694635218,
       "tag": "0001_workable_silver_samurai",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1771697063993,
+      "tag": "0002_graceful_azazel",
+      "breakpoints": true
     }
   ]
 }

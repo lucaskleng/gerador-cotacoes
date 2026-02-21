@@ -11,7 +11,11 @@ import {
   deleteQuotation,
   updateQuotationStatus,
   generateQuotationNumber,
+  getDesignSettings,
+  upsertDesignSettings,
 } from "./db";
+import { storagePut } from "./storage";
+import { DEFAULT_DESIGN_SETTINGS } from "../shared/designDefaults";
 
 // ─── Zod Schemas ────────────────────────────────────────────────────────────
 
@@ -83,6 +87,55 @@ const updateQuotationInput = z.object({
   status: z.enum(["draft", "sent", "approved", "rejected", "expired"]).optional(),
 });
 
+// ─── Design Settings Schemas ────────────────────────────────────────────────
+
+const companyBrandingSchema = z.object({
+  companyName: z.string(),
+  companySubtitle: z.string(),
+  logoUrl: z.string(),
+  cnpj: z.string(),
+  phone: z.string(),
+  email: z.string(),
+  website: z.string(),
+  address: z.string(),
+});
+
+const platformThemeSchema = z.object({
+  primaryColor: z.string(),
+  primaryForeground: z.string(),
+  backgroundColor: z.string(),
+  cardColor: z.string(),
+  foregroundColor: z.string(),
+  mutedColor: z.string(),
+  borderColor: z.string(),
+});
+
+const proposalDesignSchema = z.object({
+  headerBgColor: z.string(),
+  headerTextColor: z.string(),
+  accentColor: z.string(),
+  bodyBgColor: z.string(),
+  bodyTextColor: z.string(),
+  tableBorderColor: z.string(),
+  tableHeaderBgColor: z.string(),
+  tableHeaderTextColor: z.string(),
+  tableStripedBg: z.string(),
+  titleFont: z.string(),
+  bodyFont: z.string(),
+  monoFont: z.string(),
+  fontSize: z.string(),
+  showLogo: z.boolean(),
+  showBorderLines: z.boolean(),
+  headerLayout: z.string(),
+  paperSize: z.string(),
+});
+
+const designSettingsInput = z.object({
+  company: companyBrandingSchema,
+  platformTheme: platformThemeSchema,
+  proposalDesign: proposalDesignSchema,
+});
+
 // ─── Router ─────────────────────────────────────────────────────────────────
 
 export const appRouter = router({
@@ -97,12 +150,10 @@ export const appRouter = router({
   }),
 
   quotation: router({
-    /** List all quotations for the current user */
     list: protectedProcedure.query(async ({ ctx }) => {
       return listQuotations(ctx.user.id);
     }),
 
-    /** Get a single quotation by ID */
     get: protectedProcedure
       .input(z.object({ id: z.number() }))
       .query(async ({ ctx, input }) => {
@@ -113,7 +164,6 @@ export const appRouter = router({
         return quotation;
       }),
 
-    /** Create a new quotation */
     create: protectedProcedure
       .input(createQuotationInput)
       .mutation(async ({ ctx, input }) => {
@@ -144,14 +194,12 @@ export const appRouter = router({
         return { id, quotationNumber };
       }),
 
-    /** Update an existing quotation */
     update: protectedProcedure
       .input(updateQuotationInput)
       .mutation(async ({ ctx, input }) => {
         const { id, ...data } = input;
         const updateData: Record<string, unknown> = {};
 
-        // Only include fields that were provided
         if (data.customerName !== undefined) updateData.customerName = data.customerName;
         if (data.customerEmail !== undefined) updateData.customerEmail = data.customerEmail;
         if (data.customerPhone !== undefined) updateData.customerPhone = data.customerPhone;
@@ -177,7 +225,6 @@ export const appRouter = router({
         return { success: true };
       }),
 
-    /** Delete a quotation */
     delete: protectedProcedure
       .input(z.object({ id: z.number() }))
       .mutation(async ({ ctx, input }) => {
@@ -188,7 +235,6 @@ export const appRouter = router({
         return { success: true };
       }),
 
-    /** Update quotation status */
     updateStatus: protectedProcedure
       .input(
         z.object({
@@ -202,6 +248,47 @@ export const appRouter = router({
           throw new Error("Cotação não encontrada ou sem permissão");
         }
         return { success: true };
+      }),
+  }),
+
+  // ─── Design Settings ────────────────────────────────────────────────────
+  design: router({
+    /** Get current user's design settings (returns defaults if none saved) */
+    get: protectedProcedure.query(async ({ ctx }) => {
+      const settings = await getDesignSettings(ctx.user.id);
+      if (!settings) {
+        return DEFAULT_DESIGN_SETTINGS;
+      }
+      return {
+        company: settings.company,
+        platformTheme: settings.platformTheme,
+        proposalDesign: settings.proposalDesign,
+      };
+    }),
+
+    /** Save/update design settings */
+    save: protectedProcedure
+      .input(designSettingsInput)
+      .mutation(async ({ ctx, input }) => {
+        await upsertDesignSettings(ctx.user.id, {
+          company: input.company,
+          platformTheme: input.platformTheme,
+          proposalDesign: input.proposalDesign,
+        });
+        return { success: true };
+      }),
+
+    /** Upload company logo */
+    uploadLogo: protectedProcedure
+      .input(z.object({ base64: z.string(), mimeType: z.string() }))
+      .mutation(async ({ ctx, input }) => {
+        const buffer = Buffer.from(input.base64, "base64");
+        const ext = input.mimeType.split("/")[1] || "png";
+        const suffix = Math.random().toString(36).slice(2, 10);
+        const key = `logos/user-${ctx.user.id}-${suffix}.${ext}`;
+
+        const { url } = await storagePut(key, buffer, input.mimeType);
+        return { url };
       }),
   }),
 });
