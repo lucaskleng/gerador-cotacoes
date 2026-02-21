@@ -24,3 +24,8 @@
 - [x] Preview em tempo real das configurações na proposta
 - [x] Integrar configurações no Step 4 (Preview) e na visualização salva
 - [x] Testes vitest para os endpoints de configurações
+- [x] Upload da logo do usuário para S3
+- [x] Extrair e aplicar paleta de cores da logo (navy + coral/vermelho)
+- [x] Atualizar CSS da plataforma com as novas cores
+- [x] Atualizar defaults da proposta com as novas cores
+- [x] Atualizar header e componentes visuais com a nova identidade

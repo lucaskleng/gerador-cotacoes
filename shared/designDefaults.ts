@@ -2,6 +2,11 @@
  * Default values for design settings.
  * Used when a user has no saved settings yet.
  * Shared between client and server.
+ *
+ * Brand palette extracted from logo:
+ *   Navy/Dark   #1A1A2E
+ *   Coral/Red   #FF4B4B
+ *   White       #FFFFFF
  */
 
 export interface CompanyBranding {
@@ -54,7 +59,7 @@ export interface DesignSettingsData {
 export const DEFAULT_COMPANY: CompanyBranding = {
   companyName: "Sua Empresa",
   companySubtitle: "Soluções Profissionais",
-  logoUrl: "",
+  logoUrl: "https://files.manuscdn.com/user_upload_by_module/session_file/310419663029168631/DmKchUsoAAxHzwJg.png",
   cnpj: "",
   phone: "",
   email: "",
@@ -63,25 +68,25 @@ export const DEFAULT_COMPANY: CompanyBranding = {
 };
 
 export const DEFAULT_PLATFORM_THEME: PlatformTheme = {
-  primaryColor: "#0D7377",
+  primaryColor: "#FF4B4B",
   primaryForeground: "#FFFFFF",
-  backgroundColor: "#FAFAF8",
+  backgroundColor: "#F8F8FC",
   cardColor: "#FFFFFF",
   foregroundColor: "#1A1A2E",
   mutedColor: "#6B7280",
-  borderColor: "#E5E5E0",
+  borderColor: "#E2E2EA",
 };
 
 export const DEFAULT_PROPOSAL_DESIGN: ProposalDesign = {
-  headerBgColor: "#0D7377",
+  headerBgColor: "#1A1A2E",
   headerTextColor: "#FFFFFF",
-  accentColor: "#0D7377",
+  accentColor: "#FF4B4B",
   bodyBgColor: "#FFFFFF",
   bodyTextColor: "#1A1A2E",
-  tableBorderColor: "#E5E5E0",
-  tableHeaderBgColor: "#0D7377",
+  tableBorderColor: "#E2E2EA",
+  tableHeaderBgColor: "#1A1A2E",
   tableHeaderTextColor: "#FFFFFF",
-  tableStripedBg: "#F9FAFB",
+  tableStripedBg: "#F8F8FC",
   titleFont: "DM Sans",
   bodyFont: "DM Sans",
   monoFont: "DM Mono",
@@ -123,6 +128,12 @@ export const MONO_FONT_OPTIONS = [
 
 /** Preset color themes for quick selection */
 export const COLOR_PRESETS = [
+  {
+    name: "Navy & Coral",
+    primary: "#FF4B4B",
+    accent: "#FF4B4B",
+    headerBg: "#1A1A2E",
+  },
   {
     name: "Teal Corporativo",
     primary: "#0D7377",

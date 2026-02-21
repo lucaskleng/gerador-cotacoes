@@ -430,9 +430,11 @@ function Header({ onNavigate }: { onNavigate: (path: string) => void }) {
             onClick={() => onNavigate("/")}
             className="flex items-center gap-2.5 hover:opacity-80 transition-opacity"
           >
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-              <FileText className="w-4 h-4 text-primary-foreground" />
-            </div>
+            <img
+              src="https://files.manuscdn.com/user_upload_by_module/session_file/310419663029168631/DmKchUsoAAxHzwJg.png"
+              alt="Logo"
+              className="w-8 h-8 object-contain"
+            />
             <div>
               <h1 className="text-sm font-semibold leading-tight">
                 Quotation Generator

@@ -1,18 +1,20 @@
 /*
  * Home Page — Quotation Generator
- * Design: Clean Commerce / Swiss Design Corporativo
- * DM Sans + DM Mono | Teal accent (#0D7377) | Warm off-white background
+ * Brand: Navy (#1A1A2E) + Coral (#FF4B4B)
  */
 
 import WizardStepper from "@/components/WizardStepper";
 import WizardContainer from "@/components/WizardContainer";
 import { useQuotationStore } from "@/store/quotationStore";
-import { FileText, RotateCcw, LayoutList, LogIn, Settings } from "lucide-react";
+import { RotateCcw, LayoutList, LogIn, Settings } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { getLoginUrl } from "@/const";
+
+const LOGO_URL =
+  "https://files.manuscdn.com/user_upload_by_module/session_file/310419663029168631/DmKchUsoAAxHzwJg.png";
 
 export default function Home() {
   const { resetQuotation, info, grandTotal } = useQuotationStore();
@@ -38,11 +40,13 @@ export default function Home() {
       <header className="border-b border-border bg-card/80 backdrop-blur-sm sticky top-0 z-50 no-print">
         <div className="container flex items-center justify-between h-14">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-              <FileText className="w-4 h-4 text-primary-foreground" />
-            </div>
+            <img
+              src={LOGO_URL}
+              alt="Logo"
+              className="w-8 h-8 object-contain"
+            />
             <div>
-              <h1 className="text-sm font-semibold leading-tight">
+              <h1 className="text-sm font-semibold leading-tight text-foreground">
                 Quotation Generator
               </h1>
               <p className="text-[11px] text-muted-foreground leading-tight">
