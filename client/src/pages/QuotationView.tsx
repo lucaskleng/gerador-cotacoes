@@ -11,14 +11,16 @@ import {
   ArrowLeft,
   Printer,
   Edit3,
+  Download,
 } from "lucide-react";
 import { useLocation, useParams } from "wouter";
 import { useMemo } from "react";
+import { toast } from "sonner";
 import {
   DEFAULT_COMPANY,
   DEFAULT_PROPOSAL_DESIGN,
-} from "../../../shared/designDefaults";
-import type { CompanyBranding, ProposalDesign } from "../../../shared/designDefaults";
+} from "@shared/designDefaults";
+import type { CompanyBranding, ProposalDesign } from "@shared/designDefaults";
 
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat("pt-BR", {
@@ -172,6 +174,23 @@ export default function QuotationView() {
             >
               <Printer className="w-3.5 h-3.5" />
               Imprimir
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const link = document.createElement("a");
+                link.href = `/api/quotation/${quotation.id}/pdf`;
+                link.download = `Cotacao-${quotation.quotationNumber}.pdf`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                toast.success("Download do PDF iniciado!");
+              }}
+              className="gap-1.5 text-xs"
+            >
+              <Download className="w-3.5 h-3.5" />
+              Baixar PDF
             </Button>
           </div>
         </div>

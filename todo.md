@@ -29,3 +29,10 @@
 - [x] Atualizar CSS da plataforma com as novas cores
 - [x] Atualizar defaults da proposta com as novas cores
 - [x] Atualizar header e componentes visuais com a nova identidade
+- [x] Endpoint tRPC/Express para geração de PDF server-side
+- [x] Layout do PDF com identidade visual (logo, cores, fontes)
+- [x] Tabela de itens formatada no PDF com cálculos
+- [x] Seções de condições comerciais e textos no PDF
+- [x] Botão de download PDF no Step 4 (Preview)
+- [x] Botão de download PDF na listagem de cotações
+- [x] Botão de download PDF na visualização de cotação salva

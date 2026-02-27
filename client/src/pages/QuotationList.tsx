@@ -43,6 +43,7 @@ import {
   DollarSign,
   Filter,
   LayoutList,
+  Download,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -343,6 +344,23 @@ export default function QuotationList() {
                                 title="Editar"
                               >
                                 <Edit3 className="w-4 h-4" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-8 w-8"
+                                onClick={() => {
+                                  const link = document.createElement("a");
+                                  link.href = `/api/quotation/${q.id}/pdf`;
+                                  link.download = `Cotacao-${q.quotationNumber}.pdf`;
+                                  document.body.appendChild(link);
+                                  link.click();
+                                  document.body.removeChild(link);
+                                  toast.success("Download do PDF iniciado!");
+                                }}
+                                title="Baixar PDF"
+                              >
+                                <Download className="w-4 h-4" />
                               </Button>
                               <Select
                                 value={q.status}

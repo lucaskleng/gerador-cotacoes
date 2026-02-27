@@ -16,6 +16,7 @@ import {
   RotateCcw,
   LayoutList,
   LogIn,
+  Download,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import {
@@ -32,8 +33,8 @@ import { getLoginUrl } from "@/const";
 import {
   DEFAULT_COMPANY,
   DEFAULT_PROPOSAL_DESIGN,
-} from "../../../../shared/designDefaults";
-import type { CompanyBranding, ProposalDesign } from "../../../../shared/designDefaults";
+} from "@shared/designDefaults";
+import type { CompanyBranding, ProposalDesign } from "@shared/designDefaults";
 
 export default function Step4Preview() {
   const {
@@ -199,6 +200,25 @@ export default function Step4Preview() {
             <Printer className="w-4 h-4" />
             Imprimir
           </Button>
+          {savedId && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                const link = document.createElement("a");
+                link.href = `/api/quotation/${savedId}/pdf`;
+                link.download = `Cotacao-${savedNumber || ""}.pdf`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                toast.success("Download do PDF iniciado!");
+              }}
+              className="gap-1.5"
+            >
+              <Download className="w-4 h-4" />
+              Baixar PDF
+            </Button>
+          )}
           {isAuthenticated ? (
             <>
               {!savedId && (
