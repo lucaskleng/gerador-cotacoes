@@ -1,6 +1,6 @@
 import { eq, desc, and, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users, quotations, InsertQuotation, Quotation, designSettings, DesignSettings, InsertDesignSettings } from "../drizzle/schema";
+import { InsertUser, users, quotations, InsertQuotation, Quotation, designSettings, DesignSettings, InsertDesignSettings, proposalTemplates, ProposalTemplate, InsertProposalTemplate } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -325,6 +325,82 @@ export async function getDashboardMetrics(userId: number): Promise<DashboardMetr
     recentQuotations,
     topCustomers,
   };
+}
+
+// ─── Proposal Template Helpers ───────────────────────────────────────────────────
+
+/**
+ * List all templates for a user (includes system defaults)
+ */
+export async function listTemplates(userId: number): Promise<ProposalTemplate[]> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  return db
+    .select()
+    .from(proposalTemplates)
+    .where(eq(proposalTemplates.userId, userId))
+    .orderBy(desc(proposalTemplates.updatedAt));
+}
+
+/**
+ * Get a single template by ID (must belong to user)
+ */
+export async function getTemplate(id: number, userId: number): Promise<ProposalTemplate | undefined> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const result = await db
+    .select()
+    .from(proposalTemplates)
+    .where(and(eq(proposalTemplates.id, id), eq(proposalTemplates.userId, userId)))
+    .limit(1);
+
+  return result.length > 0 ? result[0] : undefined;
+}
+
+/**
+ * Create a new template
+ */
+export async function createTemplate(data: InsertProposalTemplate): Promise<number> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const result = await db.insert(proposalTemplates).values(data);
+  return Number(result[0].insertId);
+}
+
+/**
+ * Update a template
+ */
+export async function updateTemplate(
+  id: number,
+  userId: number,
+  data: Partial<InsertProposalTemplate>
+): Promise<boolean> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const result = await db
+    .update(proposalTemplates)
+    .set(data)
+    .where(and(eq(proposalTemplates.id, id), eq(proposalTemplates.userId, userId)));
+
+  return (result[0]?.affectedRows ?? 0) > 0;
+}
+
+/**
+ * Delete a template
+ */
+export async function deleteTemplate(id: number, userId: number): Promise<boolean> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  const result = await db
+    .delete(proposalTemplates)
+    .where(and(eq(proposalTemplates.id, id), eq(proposalTemplates.userId, userId)));
+
+  return (result[0]?.affectedRows ?? 0) > 0;
 }
 
 export async function upsertDesignSettings(

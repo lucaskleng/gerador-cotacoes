@@ -87,6 +87,13 @@ export interface QuotationState {
   updateTexts: (texts: Partial<FormattingTexts>) => void;
   recalculate: () => void;
   resetQuotation: () => void;
+  applyTemplate: (template: {
+    quotationType: QuotationType;
+    validityDays: number;
+    conditions: CommercialConditions;
+    texts: FormattingTexts;
+    defaultItems?: { description: string; unit: string; quantity: number; unitPrice: number; discount: number }[];
+  }) => void;
 }
 
 // ─── Defaults ────────────────────────────────────────────────────────────────
@@ -315,5 +322,40 @@ export const useQuotationStore = create<QuotationState>((set, get) => ({
       subtotal: 0,
       totalDiscount: 0,
       grandTotal: 0,
+    }),
+
+  applyTemplate: (template) =>
+    set((state) => {
+      const items: LineItem[] = template.defaultItems && template.defaultItems.length > 0
+        ? template.defaultItems.map((di) => {
+            const item: LineItem = {
+              id: nanoid(8),
+              description: di.description,
+              unit: di.unit,
+              quantity: di.quantity,
+              unitPrice: di.unitPrice,
+              discount: di.discount,
+              subtotal: 0,
+            };
+            item.subtotal = calculateItemSubtotal(item);
+            return item;
+          })
+        : [createEmptyItem(template.quotationType)];
+      const subtotal = items.reduce((sum, i) => sum + i.subtotal, 0);
+      const totalDiscount = items.reduce((sum, i) => {
+        const base = i.quantity * i.unitPrice;
+        return sum + base * (i.discount / 100);
+      }, 0);
+      const freightValue = template.conditions.freightValue || 0;
+      return {
+        quotationType: template.quotationType,
+        info: { ...state.info, validityDays: template.validityDays },
+        conditions: { ...template.conditions },
+        texts: { ...template.texts },
+        items,
+        subtotal,
+        totalDiscount,
+        grandTotal: subtotal + freightValue,
+      };
     }),
 }));

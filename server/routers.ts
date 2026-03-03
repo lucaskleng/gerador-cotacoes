@@ -14,6 +14,11 @@ import {
   getDesignSettings,
   upsertDesignSettings,
   getDashboardMetrics,
+  listTemplates,
+  getTemplate,
+  createTemplate,
+  updateTemplate,
+  deleteTemplate,
 } from "./db";
 import { storagePut } from "./storage";
 import { DEFAULT_DESIGN_SETTINGS } from "../shared/designDefaults";
@@ -299,6 +304,104 @@ export const appRouter = router({
 
         const { url } = await storagePut(key, buffer, input.mimeType);
         return { url };
+      }),
+  }),
+
+  // ─── Proposal Templates ──────────────────────────────────────────────────────
+  template: router({
+    list: protectedProcedure.query(async ({ ctx }) => {
+      return listTemplates(ctx.user.id);
+    }),
+
+    get: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .query(async ({ ctx, input }) => {
+        const template = await getTemplate(input.id, ctx.user.id);
+        if (!template) throw new Error("Template não encontrado");
+        return template;
+      }),
+
+    create: protectedProcedure
+      .input(
+        z.object({
+          name: z.string().min(1, "Nome do template é obrigatório"),
+          description: z.string().optional(),
+          quotationType: z.enum(["products", "services"]).default("products"),
+          validityDays: z.number().default(30),
+          conditions: conditionsSchema,
+          texts: textsSchema,
+          defaultItems: z
+            .array(
+              z.object({
+                description: z.string(),
+                unit: z.string(),
+                quantity: z.number(),
+                unitPrice: z.number(),
+                discount: z.number(),
+              })
+            )
+            .optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const id = await createTemplate({
+          userId: ctx.user.id,
+          name: input.name,
+          description: input.description ?? null,
+          quotationType: input.quotationType,
+          validityDays: input.validityDays,
+          conditions: input.conditions,
+          texts: input.texts,
+          defaultItems: input.defaultItems ?? null,
+        });
+        return { id };
+      }),
+
+    update: protectedProcedure
+      .input(
+        z.object({
+          id: z.number(),
+          name: z.string().min(1).optional(),
+          description: z.string().optional(),
+          quotationType: z.enum(["products", "services"]).optional(),
+          validityDays: z.number().optional(),
+          conditions: conditionsSchema.optional(),
+          texts: textsSchema.optional(),
+          defaultItems: z
+            .array(
+              z.object({
+                description: z.string(),
+                unit: z.string(),
+                quantity: z.number(),
+                unitPrice: z.number(),
+                discount: z.number(),
+              })
+            )
+            .optional(),
+        })
+      )
+      .mutation(async ({ ctx, input }) => {
+        const { id, ...data } = input;
+        const updateData: Record<string, unknown> = {};
+        if (data.name !== undefined) updateData.name = data.name;
+        if (data.description !== undefined) updateData.description = data.description;
+        if (data.quotationType !== undefined) updateData.quotationType = data.quotationType;
+        if (data.validityDays !== undefined) updateData.validityDays = data.validityDays;
+        if (data.conditions !== undefined) updateData.conditions = data.conditions;
+        if (data.texts !== undefined) updateData.texts = data.texts;
+        if (data.defaultItems !== undefined) updateData.defaultItems = data.defaultItems;
+
+        const success = await updateTemplate(id, ctx.user.id, updateData);
+        if (!success) throw new Error("Template não encontrado ou sem permissão");
+        return { success: true };
+      }),
+
+    delete: protectedProcedure
+      .input(z.object({ id: z.number() }))
+      .mutation(async ({ ctx, input }) => {
+        const success = await deleteTemplate(input.id, ctx.user.id);
+        if (!success) throw new Error("Template não encontrado ou sem permissão");
+        return { success: true };
       }),
   }),
 });

@@ -6,6 +6,8 @@
  */
 
 import { useQuotationStore } from "@/store/quotationStore";
+import { trpc } from "@/lib/trpc";
+import { useAuth } from "@/_core/hooks/useAuth";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -30,10 +32,12 @@ import {
   XCircle,
   Package,
   Wrench,
+  LayoutTemplate,
+  Sparkles,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
-import { useCallback, useRef, useEffect } from "react";
+import { useCallback, useRef, useEffect, useState } from "react";
 import {
   useCnpjLookup,
   stripCnpj,
@@ -55,7 +59,12 @@ function formatCnpjInput(value: string): string {
 }
 
 export default function Step1CreateQuotation() {
-  const { info, updateInfo, setStep, markStepComplete, quotationType, setQuotationType } = useQuotationStore();
+  const { info, updateInfo, setStep, markStepComplete, quotationType, setQuotationType, applyTemplate } = useQuotationStore();
+  const { isAuthenticated } = useAuth();
+  const { data: templates } = trpc.template.list.useQuery(undefined, {
+    enabled: isAuthenticated,
+  });
+  const [selectedTemplateId, setSelectedTemplateId] = useState<number | null>(null);
   const { loading, error, data, lookup } = useCnpjLookup();
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastLookedUpRef = useRef<string>("");
@@ -173,6 +182,74 @@ export default function Step1CreateQuotation() {
       transition={{ duration: 0.25 }}
       className="max-w-3xl mx-auto space-y-6"
     >
+      {/* Template Selector */}
+      {isAuthenticated && templates && templates.length > 0 && (
+        <Card className="border-dashed border-primary/30 bg-primary/[0.02]">
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+                <LayoutTemplate className="w-4 h-4 text-primary" />
+              </div>
+              <div>
+                <CardTitle className="text-lg">Usar Template</CardTitle>
+                <CardDescription>
+                  Aplique um modelo salvo para preencher textos, condições e itens automaticamente
+                </CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="flex gap-2">
+              <Select
+                value={selectedTemplateId?.toString() || ""}
+                onValueChange={(v) => setSelectedTemplateId(Number(v))}
+              >
+                <SelectTrigger className="flex-1">
+                  <SelectValue placeholder="Selecione um template..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {templates.map((t) => (
+                    <SelectItem key={t.id} value={t.id.toString()}>
+                      <span className="flex items-center gap-2">
+                        {t.quotationType === "services" ? (
+                          <Wrench className="w-3.5 h-3.5 text-violet-500" />
+                        ) : (
+                          <Package className="w-3.5 h-3.5 text-blue-500" />
+                        )}
+                        {t.name}
+                      </span>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                variant="default"
+                size="sm"
+                disabled={!selectedTemplateId}
+                onClick={() => {
+                  const tpl = templates.find((t) => t.id === selectedTemplateId);
+                  if (!tpl) return;
+                  applyTemplate({
+                    quotationType: tpl.quotationType as "products" | "services",
+                    validityDays: tpl.validityDays,
+                    conditions: tpl.conditions as any,
+                    texts: tpl.texts as any,
+                    defaultItems: (tpl.defaultItems as any) || undefined,
+                  });
+                  toast.success(`Template "${tpl.name}" aplicado!`, {
+                    description: "Textos, condições e itens foram preenchidos.",
+                  });
+                }}
+                className="gap-1.5 whitespace-nowrap"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                Aplicar
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Quotation Type Selector */}
       <Card>
         <CardHeader>

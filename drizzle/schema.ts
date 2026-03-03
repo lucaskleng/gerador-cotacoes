@@ -153,3 +153,38 @@ export const designSettings = mysqlTable("design_settings", {
 
 export type DesignSettings = typeof designSettings.$inferSelect;
 export type InsertDesignSettings = typeof designSettings.$inferInsert;
+
+// ─── Proposal Templates ────────────────────────────────────────────────────────────
+
+/** Template line item (optional pre-defined items) */
+export interface TemplateLineItem {
+  description: string;
+  unit: string;
+  quantity: number;
+  unitPrice: number;
+  discount: number;
+}
+
+/**
+ * Proposal templates table — reusable models for quick quotation creation.
+ * Each template stores default conditions, texts, and optional pre-defined items.
+ */
+export const proposalTemplates = mysqlTable("proposal_templates", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  quotationType: mysqlEnum("quotationType", ["products", "services"])
+    .default("products")
+    .notNull(),
+  isDefault: int("isDefault").default(0).notNull(), // 1 = system default, 0 = user-created
+  validityDays: int("validityDays").default(30).notNull(),
+  conditions: json("conditions").$type<QuotationConditions>().notNull(),
+  texts: json("texts").$type<QuotationTexts>().notNull(),
+  defaultItems: json("defaultItems").$type<TemplateLineItem[]>(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type ProposalTemplate = typeof proposalTemplates.$inferSelect;
+export type InsertProposalTemplate = typeof proposalTemplates.$inferInsert;

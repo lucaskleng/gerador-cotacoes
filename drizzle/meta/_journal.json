@@ -29,6 +29,13 @@
       "when": 1772505055000,
       "tag": "0003_lively_hex",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "5",
+      "when": 1772507589118,
+      "tag": "0004_round_juggernaut",
+      "breakpoints": true
     }
   ]
 }

@@ -17,6 +17,7 @@ import {
   LayoutList,
   LogIn,
   Download,
+  LayoutTemplate,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import {
@@ -26,7 +27,17 @@ import {
   formatDateShort,
   generateQuotationNumber,
 } from "@/lib/format";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
 import { getLoginUrl } from "@/const";
@@ -56,6 +67,42 @@ export default function Step4Preview() {
   const [approved, setApproved] = useState(false);
   const [savedId, setSavedId] = useState<number | null>(null);
   const [savedNumber, setSavedNumber] = useState<string | null>(null);
+  const [showTemplateDialog, setShowTemplateDialog] = useState(false);
+  const [templateName, setTemplateName] = useState("");
+
+  const saveTemplateMutation = trpc.template.create.useMutation({
+    onSuccess: () => {
+      toast.success("Template salvo com sucesso!", {
+        description: `O template "${templateName}" está disponível para uso em novas cotações.`,
+      });
+      setShowTemplateDialog(false);
+      setTemplateName("");
+    },
+    onError: (err) => {
+      toast.error("Erro ao salvar template", { description: err.message });
+    },
+  });
+
+  const handleSaveAsTemplate = useCallback(() => {
+    if (!templateName.trim()) {
+      toast.error("Informe um nome para o template");
+      return;
+    }
+    saveTemplateMutation.mutate({
+      name: templateName.trim(),
+      quotationType,
+      validityDays: info.validityDays,
+      conditions,
+      texts,
+      defaultItems: items.filter((i) => i.description.trim()).map((i) => ({
+        description: i.description,
+        unit: i.unit,
+        quantity: i.quantity,
+        unitPrice: i.unitPrice,
+        discount: i.discount,
+      })),
+    });
+  }, [templateName, quotationType, info.validityDays, conditions, texts, items, saveTemplateMutation]);
   const quotationNumber = useMemo(() => generateQuotationNumber(), []);
 
   // Load design settings
@@ -223,6 +270,15 @@ export default function Step4Preview() {
           )}
           {isAuthenticated ? (
             <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowTemplateDialog(true)}
+                className="gap-1.5"
+              >
+                <LayoutTemplate className="w-4 h-4" />
+                Salvar Template
+              </Button>
               {!savedId && (
                 <Button
                   variant="outline"
@@ -704,6 +760,54 @@ export default function Step4Preview() {
           )}
         </div>
       </div>
+      {/* Save as Template Dialog */}
+      <Dialog open={showTemplateDialog} onOpenChange={setShowTemplateDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <LayoutTemplate className="w-5 h-5 text-primary" />
+              Salvar como Template
+            </DialogTitle>
+            <DialogDescription>
+              Salve a configuração atual (textos, condições e itens) como um template reutilizável para futuras cotações.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-2">
+              <Label htmlFor="template-name">Nome do Template</Label>
+              <Input
+                id="template-name"
+                placeholder="Ex: Proposta Industrial, Manutenção Preventiva..."
+                value={templateName}
+                onChange={(e) => setTemplateName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSaveAsTemplate()}
+              />
+            </div>
+            <div className="text-sm text-muted-foreground space-y-1">
+              <p>O template incluirá:</p>
+              <ul className="list-disc list-inside space-y-0.5 ml-2">
+                <li>Tipo: {quotationType === "services" ? "Serviços" : "Produtos"}</li>
+                <li>Condições comerciais (pagamento, prazo, frete, garantia)</li>
+                <li>Todos os 6 blocos de texto formatado</li>
+                <li>{items.filter((i) => i.description.trim()).length} iten(s) pré-definido(s)</li>
+              </ul>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowTemplateDialog(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleSaveAsTemplate}
+              disabled={saveTemplateMutation.isPending || !templateName.trim()}
+              className="gap-1.5"
+            >
+              <LayoutTemplate className="w-4 h-4" />
+              {saveTemplateMutation.isPending ? "Salvando..." : "Salvar Template"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </motion.div>
   );
 }

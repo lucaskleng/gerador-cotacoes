@@ -6,7 +6,7 @@
 import WizardStepper from "@/components/WizardStepper";
 import WizardContainer from "@/components/WizardContainer";
 import { useQuotationStore } from "@/store/quotationStore";
-import { RotateCcw, LayoutList, LogIn, Settings, BarChart3 } from "lucide-react";
+import { RotateCcw, LayoutList, LogIn, Settings, BarChart3, LayoutTemplate } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
@@ -84,6 +84,15 @@ export default function Home() {
                 >
                   <LayoutList className="w-3.5 h-3.5" />
                   <span className="hidden sm:inline">Minhas Cotações</span>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate("/templates")}
+                  className="text-muted-foreground hover:text-foreground gap-1.5 text-xs"
+                  title="Templates de Proposta"
+                >
+                  <LayoutTemplate className="w-3.5 h-3.5" />
                 </Button>
                 <Button
                   variant="ghost"

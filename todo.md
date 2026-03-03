@@ -50,3 +50,11 @@
 - [x] Adaptar textos padrão do Step 3 conforme o tipo
 - [x] Adaptar preview (Step 4) e PDF para refletir o tipo
 - [x] Filtro por tipo no dashboard e na listagem
+- [x] Schema DB para tabela de templates de proposta
+- [x] Query helpers para CRUD de templates
+- [x] Endpoints tRPC para listar, criar, atualizar e excluir templates
+- [x] Página de gerenciamento de templates (criar, editar, excluir)
+- [x] Seletor de template no Step 1 do wizard (aplicar template)
+- [x] Templates pré-definidos: Proposta Industrial, Manutenção Preventiva, Serviço Técnico (via página de gerenciamento)
+- [x] Botão "Salvar como Template" no Step 4 (Preview)
+- [x] Testes vitest para endpoints de templates
