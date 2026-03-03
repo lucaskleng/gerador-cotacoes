@@ -44,7 +44,14 @@ export default function Step2DetailItems() {
     updateConditions,
     setStep,
     markStepComplete,
+    quotationType,
   } = useQuotationStore();
+
+  const isServices = quotationType === "services";
+  const itemLabel = isServices ? "Serviço" : "Item";
+  const itemsLabel = isServices ? "Serviços" : "Itens";
+  const deliveryLabel = isServices ? "Prazo de Execução" : "Prazo de Entrega";
+  const freightLabel = isServices ? "Deslocamento" : "Frete";
 
   const handleNext = () => {
     const hasValidItem = items.some(
@@ -75,7 +82,7 @@ export default function Step2DetailItems() {
                 <Package className="w-4 h-4 text-primary" />
               </div>
               <div>
-                <CardTitle className="text-lg">Itens da Cotação</CardTitle>
+                <CardTitle className="text-lg">{itemsLabel} da Cotação</CardTitle>
                 <CardDescription>
                   Adicione produtos ou serviços. Os totais são calculados automaticamente.
                 </CardDescription>
@@ -83,7 +90,7 @@ export default function Step2DetailItems() {
             </div>
             <Button variant="outline" size="sm" onClick={addItem} className="gap-1.5">
               <Plus className="w-3.5 h-3.5" />
-              Adicionar Item
+              Adicionar {itemLabel}
             </Button>
           </div>
         </CardHeader>
@@ -127,7 +134,7 @@ export default function Step2DetailItems() {
                 {/* Desktop Row */}
                 <div className="hidden md:grid grid-cols-[1fr_80px_80px_110px_80px_110px_70px] gap-3 py-3 px-3 items-center group hover:bg-muted/30 transition-colors rounded-md">
                   <Input
-                    placeholder={`Item ${index + 1} — Ex: Motor Weg 220V`}
+                    placeholder={`${itemLabel} ${index + 1} — ${isServices ? 'Ex: Instalação elétrica' : 'Ex: Motor Weg 220V'}`}
                     value={item.description}
                     onChange={(e) =>
                       updateItem(item.id, { description: e.target.value })
@@ -344,7 +351,7 @@ export default function Step2DetailItems() {
             </div>
             <div>
               <CardTitle className="text-lg">Condições Comerciais</CardTitle>
-              <CardDescription>Pagamento, entrega, frete e garantia</CardDescription>
+              <CardDescription>{isServices ? 'Pagamento, execução, deslocamento e garantia' : 'Pagamento, entrega, frete e garantia'}</CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -372,7 +379,7 @@ export default function Step2DetailItems() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Prazo de Entrega</Label>
+              <Label>{deliveryLabel}</Label>
               <Select
                 value={conditions.deliveryTime}
                 onValueChange={(v) => updateConditions({ deliveryTime: v })}
@@ -395,7 +402,7 @@ export default function Step2DetailItems() {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
-              <Label>Tipo de Frete</Label>
+              <Label>{isServices ? 'Deslocamento' : 'Tipo de Frete'}</Label>
               <Select
                 value={conditions.freight}
                 onValueChange={(v) => updateConditions({ freight: v })}
@@ -404,15 +411,26 @@ export default function Step2DetailItems() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="CIF">CIF (por conta do vendedor)</SelectItem>
-                  <SelectItem value="FOB">FOB (por conta do comprador)</SelectItem>
-                  <SelectItem value="Retirada">Retirada no local</SelectItem>
-                  <SelectItem value="A combinar">A combinar</SelectItem>
+                  {isServices ? (
+                    <>
+                      <SelectItem value="Incluso">Incluso no valor</SelectItem>
+                      <SelectItem value="Por conta do cliente">Por conta do cliente</SelectItem>
+                      <SelectItem value="Não aplicável">Não aplicável</SelectItem>
+                      <SelectItem value="A combinar">A combinar</SelectItem>
+                    </>
+                  ) : (
+                    <>
+                      <SelectItem value="CIF">CIF (por conta do vendedor)</SelectItem>
+                      <SelectItem value="FOB">FOB (por conta do comprador)</SelectItem>
+                      <SelectItem value="Retirada">Retirada no local</SelectItem>
+                      <SelectItem value="A combinar">A combinar</SelectItem>
+                    </>
+                  )}
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Valor do Frete (R$)</Label>
+              <Label>{isServices ? 'Valor do Deslocamento (R$)' : 'Valor do Frete (R$)'}</Label>
               <Input
                 type="number"
                 min={0}

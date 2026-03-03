@@ -55,6 +55,9 @@ export const quotations = mysqlTable("quotations", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
   quotationNumber: varchar("quotationNumber", { length: 32 }).notNull().unique(),
+  quotationType: mysqlEnum("quotationType", ["products", "services"])
+    .default("products")
+    .notNull(),
   status: mysqlEnum("status", ["draft", "sent", "approved", "rejected", "expired"])
     .default("draft")
     .notNull(),

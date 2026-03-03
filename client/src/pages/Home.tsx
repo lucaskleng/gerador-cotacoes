@@ -6,7 +6,7 @@
 import WizardStepper from "@/components/WizardStepper";
 import WizardContainer from "@/components/WizardContainer";
 import { useQuotationStore } from "@/store/quotationStore";
-import { RotateCcw, LayoutList, LogIn, Settings } from "lucide-react";
+import { RotateCcw, LayoutList, LogIn, Settings, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
@@ -66,6 +66,16 @@ export default function Home() {
             </Button>
             {isAuthenticated ? (
               <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => navigate("/dashboard")}
+                  className="text-muted-foreground hover:text-foreground gap-1.5 text-xs"
+                  title="Dashboard"
+                >
+                  <BarChart3 className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Dashboard</span>
+                </Button>
                 <Button
                   variant="outline"
                   size="sm"

@@ -9,6 +9,8 @@ import { nanoid } from "nanoid";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
+export type QuotationType = "products" | "services";
+
 export interface QuotationInfo {
   customerName: string;
   customerEmail: string;
@@ -54,6 +56,9 @@ export interface QuotationState {
   currentStep: number;
   completedSteps: number[];
 
+  // Quotation type
+  quotationType: QuotationType;
+
   // Step 1: Basic info
   info: QuotationInfo;
 
@@ -72,6 +77,7 @@ export interface QuotationState {
   // Actions
   setStep: (step: number) => void;
   markStepComplete: (step: number) => void;
+  setQuotationType: (type: QuotationType) => void;
   updateInfo: (info: Partial<QuotationInfo>) => void;
   addItem: () => void;
   updateItem: (id: string, updates: Partial<LineItem>) => void;
@@ -98,7 +104,7 @@ const defaultInfo: QuotationInfo = {
   notes: "",
 };
 
-const defaultConditions: CommercialConditions = {
+const defaultConditionsProducts: CommercialConditions = {
   paymentTerms: "30 dias",
   deliveryTime: "15 dias úteis",
   freight: "CIF",
@@ -106,28 +112,59 @@ const defaultConditions: CommercialConditions = {
   warranty: "12 meses",
 };
 
-const defaultTexts: FormattingTexts = {
+const defaultConditionsServices: CommercialConditions = {
+  paymentTerms: "30/60 dias",
+  deliveryTime: "A combinar",
+  freight: "Não aplicável",
+  freightValue: 0,
+  warranty: "90 dias sobre o serviço",
+};
+
+const defaultTextsProducts: FormattingTexts = {
   headerText:
-    "PROPOSTA COMERCIAL\nKL Engenharia Ltda.\nCNPJ: 00.000.000/0001-00",
+    "PROPOSTA COMERCIAL — PRODUTOS\nKL Engenharia Ltda.\nCNPJ: 00.000.000/0001-00",
   introNotes:
-    'Prezado(a) ${customerName},\n\nConforme solicitação, temos o prazer de apresentar nossa proposta comercial referente ao projeto "${reference}".\n\nSegue abaixo o detalhamento dos itens e condições comerciais.',
+    'Prezado(a) ${customerName},\n\nConforme solicitação, temos o prazer de apresentar nossa proposta comercial referente ao fornecimento de materiais/equipamentos para o projeto "${reference}".\n\nSegue abaixo o detalhamento dos itens e condições comerciais.',
   commercialNotes:
     "• Condição de Pagamento: ${paymentTerms}\n• Prazo de Entrega: ${deliveryTime}\n• Frete: ${freight}\n• Garantia: ${warranty}\n• Validade da Proposta: ${validityDays} dias",
   technicalNotes:
-    "Todos os equipamentos e serviços descritos nesta proposta atendem às normas técnicas vigentes (ABNT, NR-10, NR-12) e serão executados por profissionais habilitados.",
+    "Todos os equipamentos descritos nesta proposta atendem às normas técnicas vigentes (ABNT, NR-10, NR-12) e possuem certificação de qualidade.",
   closingNotes:
     "Ficamos à disposição para quaisquer esclarecimentos.\n\nAtenciosamente,\nEquipe Comercial\nKL Engenharia",
   footerText:
     "KL Engenharia Ltda. | Tel: (00) 0000-0000 | contato@klengenharia.com.br",
 };
 
+const defaultTextsServices: FormattingTexts = {
+  headerText:
+    "PROPOSTA COMERCIAL — SERVIÇOS\nKL Engenharia Ltda.\nCNPJ: 00.000.000/0001-00",
+  introNotes:
+    'Prezado(a) ${customerName},\n\nConforme solicitação, temos o prazer de apresentar nossa proposta de prestação de serviços referente ao projeto "${reference}".\n\nSegue abaixo o detalhamento do escopo, valores e condições comerciais.',
+  commercialNotes:
+    "• Condição de Pagamento: ${paymentTerms}\n• Prazo de Execução: ${deliveryTime}\n• Deslocamento: ${freight}\n• Garantia do Serviço: ${warranty}\n• Validade da Proposta: ${validityDays} dias",
+  technicalNotes:
+    "Todos os serviços descritos nesta proposta serão executados por profissionais habilitados, em conformidade com as normas técnicas vigentes (ABNT, NR-10, NR-12, NR-35).",
+  closingNotes:
+    "Ficamos à disposição para quaisquer esclarecimentos.\n\nAtenciosamente,\nEquipe Técnica\nKL Engenharia",
+  footerText:
+    "KL Engenharia Ltda. | Tel: (00) 0000-0000 | contato@klengenharia.com.br",
+};
+
+export function getDefaultConditions(type: QuotationType): CommercialConditions {
+  return type === "services" ? { ...defaultConditionsServices } : { ...defaultConditionsProducts };
+}
+
+export function getDefaultTexts(type: QuotationType): FormattingTexts {
+  return type === "services" ? { ...defaultTextsServices } : { ...defaultTextsProducts };
+}
+
 // ─── Helper ──────────────────────────────────────────────────────────────────
 
-function createEmptyItem(): LineItem {
+function createEmptyItem(type: QuotationType = "products"): LineItem {
   return {
     id: nanoid(8),
     description: "",
-    unit: "un",
+    unit: type === "services" ? "sv" : "un",
     quantity: 1,
     unitPrice: 0,
     discount: 0,
@@ -146,10 +183,11 @@ function calculateItemSubtotal(item: LineItem): number {
 export const useQuotationStore = create<QuotationState>((set, get) => ({
   currentStep: 1,
   completedSteps: [],
+  quotationType: "products",
   info: { ...defaultInfo },
-  items: [createEmptyItem()],
-  conditions: { ...defaultConditions },
-  texts: { ...defaultTexts },
+  items: [createEmptyItem("products")],
+  conditions: { ...defaultConditionsProducts },
+  texts: { ...defaultTextsProducts },
   subtotal: 0,
   totalDiscount: 0,
   grandTotal: 0,
@@ -163,6 +201,16 @@ export const useQuotationStore = create<QuotationState>((set, get) => ({
         : [...state.completedSteps, step],
     })),
 
+  setQuotationType: (type) =>
+    set((state) => ({
+      quotationType: type,
+      conditions: getDefaultConditions(type),
+      texts: getDefaultTexts(type),
+      items: state.items.length === 1 && !state.items[0].description
+        ? [createEmptyItem(type)]
+        : state.items,
+    })),
+
   updateInfo: (info) =>
     set((state) => ({
       info: { ...state.info, ...info },
@@ -170,7 +218,7 @@ export const useQuotationStore = create<QuotationState>((set, get) => ({
 
   addItem: () =>
     set((state) => ({
-      items: [...state.items, createEmptyItem()],
+      items: [...state.items, createEmptyItem(state.quotationType)],
     })),
 
   updateItem: (id, updates) =>
@@ -198,7 +246,7 @@ export const useQuotationStore = create<QuotationState>((set, get) => ({
   removeItem: (id) =>
     set((state) => {
       const items = state.items.filter((item) => item.id !== id);
-      if (items.length === 0) items.push(createEmptyItem());
+      if (items.length === 0) items.push(createEmptyItem(state.quotationType));
       const subtotal = items.reduce((sum, i) => sum + i.subtotal, 0);
       const totalDiscount = items.reduce((sum, i) => {
         const base = i.quantity * i.unitPrice;
@@ -259,10 +307,11 @@ export const useQuotationStore = create<QuotationState>((set, get) => ({
     set({
       currentStep: 1,
       completedSteps: [],
+      quotationType: "products",
       info: { ...defaultInfo },
-      items: [createEmptyItem()],
-      conditions: { ...defaultConditions },
-      texts: { ...defaultTexts },
+      items: [createEmptyItem("products")],
+      conditions: { ...defaultConditionsProducts },
+      texts: { ...defaultTextsProducts },
       subtotal: 0,
       totalDiscount: 0,
       grandTotal: 0,

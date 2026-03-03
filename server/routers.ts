@@ -13,6 +13,7 @@ import {
   generateQuotationNumber,
   getDesignSettings,
   upsertDesignSettings,
+  getDashboardMetrics,
 } from "./db";
 import { storagePut } from "./storage";
 import { DEFAULT_DESIGN_SETTINGS } from "../shared/designDefaults";
@@ -47,6 +48,7 @@ const textsSchema = z.object({
 });
 
 const createQuotationInput = z.object({
+  quotationType: z.enum(["products", "services"]).default("products"),
   customerName: z.string().min(1, "Nome do cliente é obrigatório"),
   customerEmail: z.string().optional(),
   customerPhone: z.string().optional(),
@@ -68,6 +70,7 @@ const createQuotationInput = z.object({
 
 const updateQuotationInput = z.object({
   id: z.number(),
+  quotationType: z.enum(["products", "services"]).optional(),
   customerName: z.string().min(1).optional(),
   customerEmail: z.string().optional(),
   customerPhone: z.string().optional(),
@@ -249,6 +252,13 @@ export const appRouter = router({
         }
         return { success: true };
       }),
+  }),
+
+  // ─── Dashboard ──────────────────────────────────────────────────────────
+  dashboard: router({
+    metrics: protectedProcedure.query(async ({ ctx }) => {
+      return getDashboardMetrics(ctx.user.id);
+    }),
   }),
 
   // ─── Design Settings ────────────────────────────────────────────────────

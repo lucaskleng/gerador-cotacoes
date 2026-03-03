@@ -36,3 +36,17 @@
 - [x] Botão de download PDF no Step 4 (Preview)
 - [x] Botão de download PDF na listagem de cotações
 - [x] Botão de download PDF na visualização de cotação salva
+- [x] Endpoint tRPC para métricas agregadas das cotações
+- [x] Dashboard com KPIs: total de cotações, valor médio, taxa de aprovação, pendentes
+- [x] Gráfico de cotações por mês (barras)
+- [x] Gráfico de distribuição por status (pizza/donut)
+- [x] Gráfico de evolução de valor total por mês (linha)
+- [x] Tabela de cotações recentes no dashboard
+- [x] Rota e navegação para o dashboard
+- [x] Adicionar campo "tipo de proposta" (Produtos / Serviços) ao schema do banco
+- [x] Atualizar Zustand store com campo quotationType
+- [x] Seletor de tipo no Step 1 (toggle/radio entre Produtos e Serviços)
+- [x] Adaptar labels e campos do Step 2 conforme o tipo selecionado
+- [x] Adaptar textos padrão do Step 3 conforme o tipo
+- [x] Adaptar preview (Step 4) e PDF para refletir o tipo
+- [x] Filtro por tipo no dashboard e na listagem

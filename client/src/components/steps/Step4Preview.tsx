@@ -48,6 +48,7 @@ export default function Step4Preview() {
     setStep,
     markStepComplete,
     resetQuotation,
+    quotationType,
   } = useQuotationStore();
 
   const { isAuthenticated } = useAuth();
@@ -111,6 +112,7 @@ export default function Step4Preview() {
 
   const handleSave = (status: "draft" | "approved" = "draft") => {
     saveMutation.mutate({
+      quotationType,
       customerName: info.customerName,
       customerEmail: info.customerEmail || undefined,
       customerPhone: info.customerPhone || undefined,

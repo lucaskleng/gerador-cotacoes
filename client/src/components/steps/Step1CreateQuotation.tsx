@@ -28,6 +28,8 @@ import {
   CheckCircle2,
   AlertCircle,
   XCircle,
+  Package,
+  Wrench,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
@@ -53,7 +55,7 @@ function formatCnpjInput(value: string): string {
 }
 
 export default function Step1CreateQuotation() {
-  const { info, updateInfo, setStep, markStepComplete } = useQuotationStore();
+  const { info, updateInfo, setStep, markStepComplete, quotationType, setQuotationType } = useQuotationStore();
   const { loading, error, data, lookup } = useCnpjLookup();
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastLookedUpRef = useRef<string>("");
@@ -171,6 +173,61 @@ export default function Step1CreateQuotation() {
       transition={{ duration: 0.25 }}
       className="max-w-3xl mx-auto space-y-6"
     >
+      {/* Quotation Type Selector */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center">
+              <FileText className="w-4 h-4 text-primary" />
+            </div>
+            <div>
+              <CardTitle className="text-lg">Tipo de Proposta</CardTitle>
+              <CardDescription>
+                Selecione se esta cotação é para fornecimento de produtos ou prestação de serviços
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => setQuotationType("products")}
+              className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${
+                quotationType === "products"
+                  ? "border-primary bg-primary/5 shadow-sm"
+                  : "border-border hover:border-primary/30 hover:bg-muted/50"
+              }`}
+            >
+              <Package className={`w-6 h-6 ${quotationType === "products" ? "text-primary" : "text-muted-foreground"}`} />
+              <span className={`text-sm font-semibold ${quotationType === "products" ? "text-primary" : "text-foreground"}`}>
+                Produtos
+              </span>
+              <span className="text-[11px] text-muted-foreground text-center leading-tight">
+                Materiais, equipamentos e fornecimento
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setQuotationType("services")}
+              className={`flex flex-col items-center gap-2 p-4 rounded-xl border-2 transition-all ${
+                quotationType === "services"
+                  ? "border-primary bg-primary/5 shadow-sm"
+                  : "border-border hover:border-primary/30 hover:bg-muted/50"
+              }`}
+            >
+              <Wrench className={`w-6 h-6 ${quotationType === "services" ? "text-primary" : "text-muted-foreground"}`} />
+              <span className={`text-sm font-semibold ${quotationType === "services" ? "text-primary" : "text-foreground"}`}>
+                Serviços
+              </span>
+              <span className="text-[11px] text-muted-foreground text-center leading-tight">
+                Mão de obra, instalação e manutenção
+              </span>
+            </button>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Customer Info */}
       <Card>
         <CardHeader>

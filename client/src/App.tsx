@@ -8,6 +8,7 @@ import Home from "./pages/Home";
 import QuotationList from "./pages/QuotationList";
 import QuotationView from "./pages/QuotationView";
 import Settings from "./pages/Settings";
+import Dashboard from "./pages/Dashboard";
 
 function Router() {
   return (
@@ -17,6 +18,7 @@ function Router() {
       <Route path={"/cotacao/:id"} component={QuotationView} />
       <Route path={"/editar/:id"} component={QuotationView} />
       <Route path={"/configuracoes"} component={Settings} />
+      <Route path={"/dashboard"} component={Dashboard} />
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>

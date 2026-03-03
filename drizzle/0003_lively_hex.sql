@@ -1,0 +1,1 @@
+ALTER TABLE `quotations` ADD `quotationType` enum('products','services') DEFAULT 'products' NOT NULL;

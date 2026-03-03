@@ -215,9 +215,118 @@ export async function getDesignSettings(userId: number): Promise<DesignSettings 
   return result.length > 0 ? result[0] : undefined;
 }
 
+// ─── Dashboard Metrics Helpers ─────────────────────────────────────────────
+
+export interface DashboardMetrics {
+  totalQuotations: number;
+  totalApproved: number;
+  totalPending: number;
+  totalRejected: number;
+  totalDrafts: number;
+  totalSent: number;
+  totalExpired: number;
+  approvalRate: number;
+  totalValue: number;
+  averageValue: number;
+  monthlyData: {
+    month: string;
+    count: number;
+    totalValue: number;
+    approved: number;
+    rejected: number;
+    pending: number;
+  }[];
+  recentQuotations: Quotation[];
+  topCustomers: { name: string; count: number; totalValue: number }[];
+}
+
 /**
- * Upsert design settings for a user (create or update).
+ * Get dashboard metrics for a user
  */
+export async function getDashboardMetrics(userId: number): Promise<DashboardMetrics> {
+  const db = await getDb();
+  if (!db) throw new Error("Database not available");
+
+  // Get all quotations for this user
+  const allQuotations = await db
+    .select()
+    .from(quotations)
+    .where(eq(quotations.userId, userId))
+    .orderBy(desc(quotations.createdAt));
+
+  const total = allQuotations.length;
+  const approved = allQuotations.filter(q => q.status === "approved").length;
+  const rejected = allQuotations.filter(q => q.status === "rejected").length;
+  const drafts = allQuotations.filter(q => q.status === "draft").length;
+  const sent = allQuotations.filter(q => q.status === "sent").length;
+  const expired = allQuotations.filter(q => q.status === "expired").length;
+  const pending = sent; // "sent" = awaiting response = pending
+
+  const totalValue = allQuotations.reduce((sum, q) => sum + Number(q.grandTotal), 0);
+  const averageValue = total > 0 ? totalValue / total : 0;
+  const approvalRate = total > 0 ? (approved / total) * 100 : 0;
+
+  // Monthly aggregation (last 12 months)
+  const monthlyMap = new Map<string, { count: number; totalValue: number; approved: number; rejected: number; pending: number }>();
+  const now = new Date();
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    monthlyMap.set(key, { count: 0, totalValue: 0, approved: 0, rejected: 0, pending: 0 });
+  }
+
+  for (const q of allQuotations) {
+    const d = q.createdAt ? new Date(q.createdAt) : new Date();
+    const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    const entry = monthlyMap.get(key);
+    if (entry) {
+      entry.count++;
+      entry.totalValue += Number(q.grandTotal);
+      if (q.status === "approved") entry.approved++;
+      if (q.status === "rejected") entry.rejected++;
+      if (q.status === "sent") entry.pending++;
+    }
+  }
+
+  const monthlyData = Array.from(monthlyMap.entries()).map(([month, data]) => ({
+    month,
+    ...data,
+  }));
+
+  // Top customers
+  const customerMap = new Map<string, { count: number; totalValue: number }>();
+  for (const q of allQuotations) {
+    const name = q.customerName;
+    const existing = customerMap.get(name) || { count: 0, totalValue: 0 };
+    existing.count++;
+    existing.totalValue += Number(q.grandTotal);
+    customerMap.set(name, existing);
+  }
+  const topCustomers = Array.from(customerMap.entries())
+    .map(([name, data]) => ({ name, ...data }))
+    .sort((a, b) => b.totalValue - a.totalValue)
+    .slice(0, 5);
+
+  // Recent quotations (last 5)
+  const recentQuotations = allQuotations.slice(0, 5);
+
+  return {
+    totalQuotations: total,
+    totalApproved: approved,
+    totalPending: pending,
+    totalRejected: rejected,
+    totalDrafts: drafts,
+    totalSent: sent,
+    totalExpired: expired,
+    approvalRate,
+    totalValue,
+    averageValue,
+    monthlyData,
+    recentQuotations,
+    topCustomers,
+  };
+}
+
 export async function upsertDesignSettings(
   userId: number,
   data: Omit<InsertDesignSettings, "id" | "userId" | "createdAt" | "updatedAt">
