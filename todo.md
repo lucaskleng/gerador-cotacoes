@@ -58,3 +58,6 @@
 - [x] Templates pré-definidos: Proposta Industrial, Manutenção Preventiva, Serviço Técnico (via página de gerenciamento)
 - [x] Botão "Salvar como Template" no Step 4 (Preview)
 - [x] Testes vitest para endpoints de templates
+- [x] Melhorar layout do PDF inspirado na proposta WEG (header profissional, sumário, seções numeradas, rodapé, revisão)
+- [x] Melhorar layout do preview HTML (Step 4 e QuotationView) com mesmo padrão
+- [ ] Criar cotação de exemplo com itens extraídos da proposta KL Lotus Tower (pendente: requer login do usuário)

@@ -180,6 +180,7 @@ export const appRouter = router({
         const id = await createQuotation({
           userId: ctx.user.id,
           quotationNumber,
+          quotationType: input.quotationType,
           status: input.status,
           customerName: input.customerName,
           customerEmail: input.customerEmail ?? null,
@@ -208,6 +209,7 @@ export const appRouter = router({
         const { id, ...data } = input;
         const updateData: Record<string, unknown> = {};
 
+        if (data.quotationType !== undefined) updateData.quotationType = data.quotationType;
         if (data.customerName !== undefined) updateData.customerName = data.customerName;
         if (data.customerEmail !== undefined) updateData.customerEmail = data.customerEmail;
         if (data.customerPhone !== undefined) updateData.customerPhone = data.customerPhone;

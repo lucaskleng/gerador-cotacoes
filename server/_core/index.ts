@@ -72,6 +72,7 @@ async function startServer() {
           quotationNumber: quotation.quotationNumber,
           quotationDate: quotation.quotationDate,
           validityDays: quotation.validityDays,
+          quotationType: (quotation as any).quotationType ?? "products",
           customerName: quotation.customerName,
           customerEmail: quotation.customerEmail,
           customerPhone: quotation.customerPhone,
