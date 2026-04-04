@@ -61,3 +61,12 @@
 - [x] Melhorar layout do PDF inspirado na proposta WEG (header profissional, sumário, seções numeradas, rodapé, revisão)
 - [x] Melhorar layout do preview HTML (Step 4 e QuotationView) com mesmo padrão
 - [ ] Criar cotação de exemplo com itens extraídos da proposta KL Lotus Tower (pendente: requer login do usuário)
+- [x] Ferramenta de geração de proposta técnica automática (Word .docx)
+- [x] Backend: instalar docx e criar gerador de proposta técnica Word server-side
+- [x] Backend: endpoint Express para gerar proposta técnica + importar Excel
+- [x] Frontend: página dedicada /proposta-tecnica com formulário completo
+- [x] Frontend: interface para adicionar painéis com lista de materiais (item, descrição, qtd, código, obs)
+- [x] Frontend: importação de itens via Excel (.xlsx) com detecção automática de painéis
+- [x] Frontend: seções textuais editáveis (normas, limites, garantia, etc.) com defaults
+- [x] Frontend: botão de download Word (.docx) da proposta técnica
+- [x] Testes vitest para o gerador de proposta técnica Word (6 testes)

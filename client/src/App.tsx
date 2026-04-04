@@ -10,6 +10,7 @@ import QuotationView from "./pages/QuotationView";
 import Settings from "./pages/Settings";
 import Dashboard from "./pages/Dashboard";
 import Templates from "./pages/Templates";
+import TechnicalProposal from "./pages/TechnicalProposal";
 
 function Router() {
   return (
@@ -21,6 +22,7 @@ function Router() {
       <Route path={"/configuracoes"} component={Settings} />
       <Route path={"/dashboard"} component={Dashboard} />
       <Route path={"/templates"} component={Templates} />
+      <Route path={"/proposta-tecnica"} component={TechnicalProposal} />
       <Route path={"/404"} component={NotFound} />
       <Route component={NotFound} />
     </Switch>
