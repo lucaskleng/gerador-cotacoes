@@ -470,35 +470,105 @@ export default function QuotationView() {
                         </tr>
                       </thead>
                       <tbody>
-                        {items.map((item: any, idx: number) => (
-                          <tr
-                            key={item.id || idx}
-                            style={{
-                              backgroundColor: idx % 2 === 1 ? d.tableStripedBg : "transparent",
-                              borderBottom: `1px solid ${d.tableBorderColor}`,
-                            }}
-                          >
-                            <td className="py-2.5 px-3 text-center opacity-60" style={{ fontFamily: d.monoFont }}>
-                              {String(idx + 1).padStart(2, "0")}
-                            </td>
-                            <td className="py-2.5 px-3 font-medium">{item.description || "—"}</td>
-                            <td className="py-2.5 px-3 text-center opacity-70">{item.unit}</td>
-                            <td className="py-2.5 px-3 text-center tabular-nums" style={{ fontFamily: d.monoFont }}>
-                              {item.quantity}
-                            </td>
-                            <td className="py-2.5 px-3 text-right tabular-nums" style={{ fontFamily: d.monoFont }}>
-                              {formatCurrency(item.unitPrice)}
-                            </td>
-                            {items.some((i: any) => (i.discount ?? 0) > 0) && (
-                              <td className="py-2.5 px-3 text-right tabular-nums opacity-70" style={{ fontFamily: d.monoFont }}>
-                                {(item.discount ?? 0) > 0 ? `${item.discount}%` : "—"}
-                              </td>
-                            )}
-                            <td className="py-2.5 px-3 text-right tabular-nums font-semibold" style={{ fontFamily: d.monoFont }}>
-                              {formatCurrency(item.subtotal)}
-                            </td>
-                          </tr>
-                        ))}
+                        {items.map((item: any, idx: number) => {
+                          const subItems = Array.isArray(item.subItems) ? item.subItems : [];
+                          const hasSubItems = subItems.length > 0;
+                          const hasDiscount = items.some((i: any) => (i.discount ?? 0) > 0);
+                          const colSpan = hasDiscount ? 7 : 6;
+                          return (
+                            <>
+                              <tr
+                                key={item.id || idx}
+                                style={{
+                                  backgroundColor: idx % 2 === 1 ? d.tableStripedBg : "transparent",
+                                  borderBottom: hasSubItems ? "none" : `1px solid ${d.tableBorderColor}`,
+                                }}
+                              >
+                                <td className="py-2.5 px-3 text-center opacity-60" style={{ fontFamily: d.monoFont }}>
+                                  {String(idx + 1).padStart(2, "0")}
+                                </td>
+                                <td className="py-2.5 px-3 font-medium">
+                                  {item.description || "—"}
+                                  {hasSubItems && (
+                                    <span
+                                      className="ml-2 text-[10px] px-1.5 py-0.5 rounded-full font-medium"
+                                      style={{ backgroundColor: `${d.accentColor}20`, color: d.accentColor }}
+                                    >
+                                      {subItems.length} comp.
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="py-2.5 px-3 text-center opacity-70">{item.unit}</td>
+                                <td className="py-2.5 px-3 text-center tabular-nums" style={{ fontFamily: d.monoFont }}>
+                                  {item.quantity}
+                                </td>
+                                <td className="py-2.5 px-3 text-right tabular-nums" style={{ fontFamily: d.monoFont }}>
+                                  {formatCurrency(item.unitPrice)}
+                                </td>
+                                {hasDiscount && (
+                                  <td className="py-2.5 px-3 text-right tabular-nums opacity-70" style={{ fontFamily: d.monoFont }}>
+                                    {(item.discount ?? 0) > 0 ? `${item.discount}%` : "—"}
+                                  </td>
+                                )}
+                                <td className="py-2.5 px-3 text-right tabular-nums font-semibold" style={{ fontFamily: d.monoFont }}>
+                                  {formatCurrency(item.subtotal)}
+                                </td>
+                              </tr>
+                              {hasSubItems && (
+                                <tr key={`${item.id || idx}-subs`} style={{ borderBottom: `1px solid ${d.tableBorderColor}` }}>
+                                  <td colSpan={colSpan} className="p-0">
+                                    <div className="ml-10 mr-4 mb-3 mt-1">
+                                      <table className={`w-full ${fs.xs}`} style={{ borderCollapse: "collapse" }}>
+                                        <thead>
+                                          <tr style={{ backgroundColor: `${d.accentColor}15` }}>
+                                            <th className="py-1.5 px-2 text-left font-semibold opacity-70" style={{ width: "36px" }}>#</th>
+                                            <th className="py-1.5 px-2 text-left font-semibold opacity-70">Componente</th>
+                                            <th className="py-1.5 px-2 text-center font-semibold opacity-70" style={{ width: "50px" }}>Qtd.</th>
+                                            <th className="py-1.5 px-2 text-left font-semibold opacity-70" style={{ width: "60px" }}>Unid.</th>
+                                            {subItems.some((si: any) => si.code) && (
+                                              <th className="py-1.5 px-2 text-left font-semibold opacity-70" style={{ width: "120px" }}>Código</th>
+                                            )}
+                                            {subItems.some((si: any) => si.observation) && (
+                                              <th className="py-1.5 px-2 text-left font-semibold opacity-70" style={{ width: "120px" }}>Obs.</th>
+                                            )}
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          {subItems.map((si: any, siIdx: number) => (
+                                            <tr
+                                              key={si.id || siIdx}
+                                              style={{
+                                                backgroundColor: siIdx % 2 === 1 ? d.tableStripedBg : "transparent",
+                                                borderBottom: `1px solid ${d.tableBorderColor}40`,
+                                              }}
+                                            >
+                                              <td className="py-1.5 px-2 opacity-50" style={{ fontFamily: d.monoFont }}>
+                                                {String(siIdx + 1).padStart(2, "0")}
+                                              </td>
+                                              <td className="py-1.5 px-2">{si.description}</td>
+                                              <td className="py-1.5 px-2 text-center tabular-nums" style={{ fontFamily: d.monoFont }}>
+                                                {si.quantity}
+                                              </td>
+                                              <td className="py-1.5 px-2 opacity-70">{si.unit}</td>
+                                              {subItems.some((s: any) => s.code) && (
+                                                <td className="py-1.5 px-2 opacity-60" style={{ fontFamily: d.monoFont }}>
+                                                  {si.code || "—"}
+                                                </td>
+                                              )}
+                                              {subItems.some((s: any) => s.observation) && (
+                                                <td className="py-1.5 px-2 opacity-60">{si.observation || "—"}</td>
+                                              )}
+                                            </tr>
+                                          ))}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  </td>
+                                </tr>
+                              )}
+                            </>
+                          );
+                        })}
                       </tbody>
                     </table>
 

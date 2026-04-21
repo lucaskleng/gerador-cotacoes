@@ -70,3 +70,12 @@
 - [x] Frontend: seções textuais editáveis (normas, limites, garantia, etc.) com defaults
 - [x] Frontend: botão de download Word (.docx) da proposta técnica
 - [x] Testes vitest para o gerador de proposta técnica Word (6 testes)
+- [x] Funcionalidade de subitens dentro dos quadros/painéis na cotação comercial
+- [x] Schema: subitens como JSON embutido no item (sem tabela separada)
+- [x] Store: adicionar subitens ao QuotationItem no Zustand store
+- [x] Step 2 wizard: interface para adicionar/editar/remover subitens dentro de cada item
+- [x] Step 4 preview: exibir subitens abaixo de cada item na visualização
+- [x] QuotationView: exibir subitens na visualização pública
+- [x] PDF: incluir subitens na geração do PDF
+- [x] Routers/db.ts: salvar e carregar subitens do banco de dados (via JSON no campo items)
+- [x] Testes vitest para subitens (50 testes passando)

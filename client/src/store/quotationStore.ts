@@ -24,6 +24,15 @@ export interface QuotationInfo {
   notes: string;
 }
 
+export interface SubItem {
+  id: string;
+  description: string;
+  quantity: number;
+  unit: string;
+  code?: string;
+  observation?: string;
+}
+
 export interface LineItem {
   id: string;
   description: string;
@@ -32,6 +41,7 @@ export interface LineItem {
   unitPrice: number;
   discount: number;
   subtotal: number;
+  subItems: SubItem[];
 }
 
 export interface CommercialConditions {
@@ -83,6 +93,9 @@ export interface QuotationState {
   updateItem: (id: string, updates: Partial<LineItem>) => void;
   removeItem: (id: string) => void;
   duplicateItem: (id: string) => void;
+  addSubItem: (itemId: string) => void;
+  updateSubItem: (itemId: string, subItemId: string, updates: Partial<SubItem>) => void;
+  removeSubItem: (itemId: string, subItemId: string) => void;
   updateConditions: (conditions: Partial<CommercialConditions>) => void;
   updateTexts: (texts: Partial<FormattingTexts>) => void;
   recalculate: () => void;
@@ -167,6 +180,17 @@ export function getDefaultTexts(type: QuotationType): FormattingTexts {
 
 // ─── Helper ──────────────────────────────────────────────────────────────────
 
+function createEmptySubItem(): SubItem {
+  return {
+    id: nanoid(8),
+    description: "",
+    quantity: 1,
+    unit: "un",
+    code: "",
+    observation: "",
+  };
+}
+
 function createEmptyItem(type: QuotationType = "products"): LineItem {
   return {
     id: nanoid(8),
@@ -176,6 +200,7 @@ function createEmptyItem(type: QuotationType = "products"): LineItem {
     unitPrice: 0,
     discount: 0,
     subtotal: 0,
+    subItems: [],
   };
 }
 
@@ -272,9 +297,45 @@ export const useQuotationStore = create<QuotationState>((set, get) => ({
     set((state) => {
       const source = state.items.find((i) => i.id === id);
       if (!source) return {};
-      const newItem = { ...source, id: nanoid(8) };
+      const newItem = {
+        ...source,
+        id: nanoid(8),
+        subItems: source.subItems.map((si) => ({ ...si, id: nanoid(8) })),
+      };
       return { items: [...state.items, newItem] };
     }),
+
+  addSubItem: (itemId) =>
+    set((state) => ({
+      items: state.items.map((item) =>
+        item.id === itemId
+          ? { ...item, subItems: [...item.subItems, createEmptySubItem()] }
+          : item
+      ),
+    })),
+
+  updateSubItem: (itemId, subItemId, updates) =>
+    set((state) => ({
+      items: state.items.map((item) =>
+        item.id === itemId
+          ? {
+              ...item,
+              subItems: item.subItems.map((si) =>
+                si.id === subItemId ? { ...si, ...updates } : si
+              ),
+            }
+          : item
+      ),
+    })),
+
+  removeSubItem: (itemId, subItemId) =>
+    set((state) => ({
+      items: state.items.map((item) =>
+        item.id === itemId
+          ? { ...item, subItems: item.subItems.filter((si) => si.id !== subItemId) }
+          : item
+      ),
+    })),
 
   updateConditions: (conditions) =>
     set((state) => {
@@ -336,6 +397,7 @@ export const useQuotationStore = create<QuotationState>((set, get) => ({
               unitPrice: di.unitPrice,
               discount: di.discount,
               subtotal: 0,
+              subItems: [],
             };
             item.subtotal = calculateItemSubtotal(item);
             return item;

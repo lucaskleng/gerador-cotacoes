@@ -567,6 +567,94 @@ export async function generateQuotationPDF(
     doc.font("Helvetica-Bold").text(formatCurrency(item.subtotal), tx, rowY, { width: colWidths.total, align: "right" });
 
     y += rowH;
+
+    // ─── SUBITEMS (components within this item) ───────────────────────
+    const subItems = Array.isArray((item as any).subItems) ? (item as any).subItems : [];
+    if (subItems.length > 0) {
+      const subIndent = 20;
+      const subTableX = margin + subIndent;
+      const subTableW = contentWidth - subIndent - 10;
+      const hasCode = subItems.some((si: any) => si.code);
+      const hasObs = subItems.some((si: any) => si.observation);
+
+      // Sub-table column widths
+      const subCols = {
+        num: 22,
+        desc: 0, // calculated below
+        qty: 32,
+        unit: 30,
+        code: hasCode ? 80 : 0,
+        obs: hasObs ? 70 : 0,
+      };
+      subCols.desc = subTableW - subCols.num - subCols.qty - subCols.unit - subCols.code - subCols.obs;
+
+      // Sub-table header
+      const subHeaderH = fs.small + 5;
+      if (y + subHeaderH + 20 > pageHeight - footerHeight - 20) {
+        doc.addPage();
+        y = contentStartY;
+        drawTableHeader();
+      }
+
+      const accentLight = lightenColor(design.accentColor, 0.88);
+      doc.rect(subTableX, y, subTableW, subHeaderH).fill(accentLight);
+      doc.fillColor(design.bodyTextColor).fontSize(fs.small - 1).font("Helvetica-Bold");
+      let sx = subTableX;
+      doc.text("#", sx + 2, y + 2, { width: subCols.num, align: "center" }); sx += subCols.num;
+      doc.text("Componente", sx + 2, y + 2, { width: subCols.desc }); sx += subCols.desc;
+      doc.text("Qtd.", sx, y + 2, { width: subCols.qty, align: "center" }); sx += subCols.qty;
+      doc.text("Un.", sx, y + 2, { width: subCols.unit, align: "center" }); sx += subCols.unit;
+      if (hasCode) { doc.text("Código", sx + 2, y + 2, { width: subCols.code }); sx += subCols.code; }
+      if (hasObs) { doc.text("Obs.", sx + 2, y + 2, { width: subCols.obs }); }
+      y += subHeaderH;
+
+      // Sub-table rows
+      subItems.forEach((si: any, siIdx: number) => {
+        doc.fontSize(fs.small - 1).font("Helvetica");
+        const siDescH = doc.heightOfString(si.description || "", { width: subCols.desc - 6 });
+        const siRowH = Math.max(fs.small + 4, siDescH + 5);
+
+        if (y + siRowH > pageHeight - footerHeight - 20) {
+          doc.addPage();
+          y = contentStartY;
+          drawTableHeader();
+          // Re-draw sub-table header on new page
+          doc.rect(subTableX, y, subTableW, subHeaderH).fill(accentLight);
+          doc.fillColor(design.bodyTextColor).fontSize(fs.small - 1).font("Helvetica-Bold");
+          let sx2 = subTableX;
+          doc.text("#", sx2 + 2, y + 2, { width: subCols.num, align: "center" }); sx2 += subCols.num;
+          doc.text("Componente", sx2 + 2, y + 2, { width: subCols.desc }); sx2 += subCols.desc;
+          doc.text("Qtd.", sx2, y + 2, { width: subCols.qty, align: "center" }); sx2 += subCols.qty;
+          doc.text("Un.", sx2, y + 2, { width: subCols.unit, align: "center" }); sx2 += subCols.unit;
+          if (hasCode) { doc.text("Código", sx2 + 2, y + 2, { width: subCols.code }); sx2 += subCols.code; }
+          if (hasObs) { doc.text("Obs.", sx2 + 2, y + 2, { width: subCols.obs }); }
+          y += subHeaderH;
+        }
+
+        // Alternating background for sub-rows
+        if (siIdx % 2 === 1) {
+          doc.rect(subTableX, y, subTableW, siRowH).fill(design.tableStripedBg);
+        }
+
+        // Sub-row border
+        doc.strokeColor(design.tableBorderColor).lineWidth(0.2)
+          .moveTo(subTableX, y + siRowH).lineTo(subTableX + subTableW, y + siRowH).stroke();
+
+        const siY = y + 2;
+        let sx3 = subTableX;
+        doc.fillColor(design.bodyTextColor).fontSize(fs.small - 1).font("Helvetica");
+        doc.text(String(siIdx + 1), sx3 + 2, siY, { width: subCols.num, align: "center" }); sx3 += subCols.num;
+        doc.text(si.description || "", sx3 + 2, siY, { width: subCols.desc - 6 }); sx3 += subCols.desc;
+        doc.text(String(si.quantity ?? ""), sx3, siY, { width: subCols.qty, align: "center" }); sx3 += subCols.qty;
+        doc.text(si.unit || "", sx3, siY, { width: subCols.unit, align: "center" }); sx3 += subCols.unit;
+        if (hasCode) { doc.text(si.code || "", sx3 + 2, siY, { width: subCols.code - 4 }); sx3 += subCols.code; }
+        if (hasObs) { doc.text(si.observation || "", sx3 + 2, siY, { width: subCols.obs - 4 }); }
+
+        y += siRowH;
+      });
+
+      y += 4; // spacing after sub-table
+    }
   });
 
   // ─── TOTALS BOX ───────────────────────────────────────────────────────

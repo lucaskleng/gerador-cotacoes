@@ -25,6 +25,15 @@ import { DEFAULT_DESIGN_SETTINGS } from "../shared/designDefaults";
 
 // ─── Zod Schemas ────────────────────────────────────────────────────────────
 
+const subItemSchema = z.object({
+  id: z.string(),
+  description: z.string(),
+  quantity: z.number(),
+  unit: z.string(),
+  code: z.string().optional(),
+  observation: z.string().optional(),
+});
+
 const lineItemSchema = z.object({
   id: z.string(),
   description: z.string(),
@@ -33,6 +42,7 @@ const lineItemSchema = z.object({
   unitPrice: z.number(),
   discount: z.number(),
   subtotal: z.number(),
+  subItems: z.array(subItemSchema).optional(),
 });
 
 const conditionsSchema = z.object({

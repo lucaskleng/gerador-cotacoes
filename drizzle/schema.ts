@@ -18,6 +18,16 @@ export const users = mysqlTable("users", {
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
+// ─── Sub-Item (component inside a panel/item) ─────────────────────────────
+export interface QuotationSubItem {
+  id: string;
+  description: string;
+  quantity: number;
+  unit: string;
+  code?: string;       // código do fabricante (ex: ABB, WEG)
+  observation?: string; // observação adicional
+}
+
 // ─── Quotation Line Item (JSON shape stored in quotations.items) ────────────
 export interface QuotationLineItem {
   id: string;
@@ -27,6 +37,7 @@ export interface QuotationLineItem {
   unitPrice: number;
   discount: number;
   subtotal: number;
+  subItems?: QuotationSubItem[]; // componentes detalhados do quadro/painel
 }
 
 // ─── Commercial Conditions (JSON shape) ─────────────────────────────────────

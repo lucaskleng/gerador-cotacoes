@@ -1,10 +1,11 @@
 /*
- * Step 2 — Detalhar Itens
+ * Step 2 — Detalhar Itens (com Subitens)
  * Design: Clean Commerce / Swiss Design
  * Grid/Table with reactive subtotal/total calculations
- * Monetary values in DM Mono, right-aligned
+ * Each item can have expandable sub-items (components)
  */
 
+import { useState } from "react";
 import { useQuotationStore } from "@/store/quotationStore";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,6 +26,9 @@ import {
   Copy,
   Package,
   Truck,
+  ChevronDown,
+  ChevronRight,
+  List,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { formatCurrency } from "@/lib/format";
@@ -41,17 +45,29 @@ export default function Step2DetailItems() {
     updateItem,
     removeItem,
     duplicateItem,
+    addSubItem,
+    updateSubItem,
+    removeSubItem,
     updateConditions,
     setStep,
     markStepComplete,
     quotationType,
   } = useQuotationStore();
 
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
+
+  const toggleExpand = (itemId: string) => {
+    setExpandedItems((prev) => {
+      const next = new Set(prev);
+      if (next.has(itemId)) next.delete(itemId);
+      else next.add(itemId);
+      return next;
+    });
+  };
+
   const isServices = quotationType === "services";
   const itemLabel = isServices ? "Serviço" : "Item";
   const itemsLabel = isServices ? "Serviços" : "Itens";
-  const deliveryLabel = isServices ? "Prazo de Execução" : "Prazo de Entrega";
-  const freightLabel = isServices ? "Deslocamento" : "Frete";
 
   const handleNext = () => {
     const hasValidItem = items.some(
@@ -63,6 +79,11 @@ export default function Step2DetailItems() {
     }
     markStepComplete(2);
     setStep(3);
+  };
+
+  const handleAddSubItem = (itemId: string) => {
+    addSubItem(itemId);
+    setExpandedItems((prev) => new Set(prev).add(itemId));
   };
 
   return (
@@ -84,7 +105,7 @@ export default function Step2DetailItems() {
               <div>
                 <CardTitle className="text-lg">{itemsLabel} da Cotação</CardTitle>
                 <CardDescription>
-                  Adicione produtos ou serviços. Os totais são calculados automaticamente.
+                  Adicione itens e seus componentes (subitens). Os totais são calculados automaticamente.
                 </CardDescription>
               </div>
             </div>
@@ -96,7 +117,8 @@ export default function Step2DetailItems() {
         </CardHeader>
         <CardContent>
           {/* Table Header */}
-          <div className="hidden md:grid grid-cols-[1fr_80px_80px_110px_80px_110px_70px] gap-3 px-3 pb-2 border-b border-border">
+          <div className="hidden md:grid grid-cols-[28px_1fr_80px_80px_110px_80px_110px_70px] gap-3 px-3 pb-2 border-b border-border">
+            <span></span>
             <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
               Descrição
             </span>
@@ -122,179 +144,375 @@ export default function Step2DetailItems() {
 
           {/* Items */}
           <AnimatePresence mode="popLayout">
-            {items.map((item, index) => (
-              <motion.div
-                key={item.id}
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: "auto" }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.2 }}
-                className="border-b border-border/50 last:border-0"
-              >
-                {/* Desktop Row */}
-                <div className="hidden md:grid grid-cols-[1fr_80px_80px_110px_80px_110px_70px] gap-3 py-3 px-3 items-center group hover:bg-muted/30 transition-colors rounded-md">
-                  <Input
-                    placeholder={`${itemLabel} ${index + 1} — ${isServices ? 'Ex: Instalação elétrica' : 'Ex: Motor Weg 220V'}`}
-                    value={item.description}
-                    onChange={(e) =>
-                      updateItem(item.id, { description: e.target.value })
-                    }
-                    className="h-9 text-sm"
-                  />
-                  <Select
-                    value={item.unit}
-                    onValueChange={(v) => updateItem(item.id, { unit: v })}
-                  >
-                    <SelectTrigger className="h-9 text-sm">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="un">un</SelectItem>
-                      <SelectItem value="pç">pç</SelectItem>
-                      <SelectItem value="m">m</SelectItem>
-                      <SelectItem value="m²">m²</SelectItem>
-                      <SelectItem value="kg">kg</SelectItem>
-                      <SelectItem value="hr">hr</SelectItem>
-                      <SelectItem value="vb">vb</SelectItem>
-                      <SelectItem value="cj">cj</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Input
-                    type="number"
-                    min={0}
-                    step={1}
-                    value={item.quantity || ""}
-                    onChange={(e) =>
-                      updateItem(item.id, { quantity: Number(e.target.value) || 0 })
-                    }
-                    className="h-9 text-sm text-right font-mono"
-                  />
-                  <Input
-                    type="number"
-                    min={0}
-                    step={0.01}
-                    value={item.unitPrice || ""}
-                    onChange={(e) =>
-                      updateItem(item.id, {
-                        unitPrice: Number(e.target.value) || 0,
-                      })
-                    }
-                    className="h-9 text-sm text-right font-mono"
-                  />
-                  <Input
-                    type="number"
-                    min={0}
-                    max={100}
-                    step={0.5}
-                    value={item.discount || ""}
-                    onChange={(e) =>
-                      updateItem(item.id, {
-                        discount: Number(e.target.value) || 0,
-                      })
-                    }
-                    className="h-9 text-sm text-right font-mono"
-                  />
-                  <div className="text-right font-mono text-sm font-medium tabular-nums">
-                    {formatCurrency(item.subtotal)}
-                  </div>
-                  <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button
-                      onClick={() => duplicateItem(item.id)}
-                      className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
-                      title="Duplicar"
-                    >
-                      <Copy className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={() => removeItem(item.id)}
-                      className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
-                      title="Remover"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
+            {items.map((item, index) => {
+              const isExpanded = expandedItems.has(item.id);
+              const hasSubItems = item.subItems && item.subItems.length > 0;
 
-                {/* Mobile Card */}
-                <div className="md:hidden p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-medium text-muted-foreground">
-                      Item {index + 1}
-                    </span>
-                    <div className="flex gap-1">
+              return (
+                <motion.div
+                  key={item.id}
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="border-b border-border/50 last:border-0"
+                >
+                  {/* Desktop Row */}
+                  <div className="hidden md:grid grid-cols-[28px_1fr_80px_80px_110px_80px_110px_70px] gap-3 py-3 px-3 items-center group hover:bg-muted/30 transition-colors rounded-md">
+                    {/* Expand toggle */}
+                    <button
+                      onClick={() => toggleExpand(item.id)}
+                      className="p-0.5 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+                      title={isExpanded ? "Recolher subitens" : "Expandir subitens"}
+                    >
+                      {isExpanded ? (
+                        <ChevronDown className="w-4 h-4" />
+                      ) : (
+                        <ChevronRight className="w-4 h-4" />
+                      )}
+                    </button>
+                    <div className="flex items-center gap-2">
+                      <Input
+                        placeholder={`${itemLabel} ${index + 1} — ${isServices ? 'Ex: Instalação elétrica' : 'Ex: QGBT-01'}`}
+                        value={item.description}
+                        onChange={(e) =>
+                          updateItem(item.id, { description: e.target.value })
+                        }
+                        className="h-9 text-sm"
+                      />
+                      {hasSubItems && (
+                        <span className="text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full font-medium whitespace-nowrap">
+                          {item.subItems.length} comp.
+                        </span>
+                      )}
+                    </div>
+                    <Select
+                      value={item.unit}
+                      onValueChange={(v) => updateItem(item.id, { unit: v })}
+                    >
+                      <SelectTrigger className="h-9 text-sm">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="un">un</SelectItem>
+                        <SelectItem value="pç">pç</SelectItem>
+                        <SelectItem value="m">m</SelectItem>
+                        <SelectItem value="m²">m²</SelectItem>
+                        <SelectItem value="kg">kg</SelectItem>
+                        <SelectItem value="hr">hr</SelectItem>
+                        <SelectItem value="vb">vb</SelectItem>
+                        <SelectItem value="cj">cj</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Input
+                      type="number"
+                      min={0}
+                      step={1}
+                      value={item.quantity || ""}
+                      onChange={(e) =>
+                        updateItem(item.id, { quantity: Number(e.target.value) || 0 })
+                      }
+                      className="h-9 text-sm text-right font-mono"
+                    />
+                    <Input
+                      type="number"
+                      min={0}
+                      step={0.01}
+                      value={item.unitPrice || ""}
+                      onChange={(e) =>
+                        updateItem(item.id, {
+                          unitPrice: Number(e.target.value) || 0,
+                        })
+                      }
+                      className="h-9 text-sm text-right font-mono"
+                    />
+                    <Input
+                      type="number"
+                      min={0}
+                      max={100}
+                      step={0.5}
+                      value={item.discount || ""}
+                      onChange={(e) =>
+                        updateItem(item.id, {
+                          discount: Number(e.target.value) || 0,
+                        })
+                      }
+                      className="h-9 text-sm text-right font-mono"
+                    />
+                    <div className="text-right font-mono text-sm font-medium tabular-nums">
+                      {formatCurrency(item.subtotal)}
+                    </div>
+                    <div className="flex items-center justify-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => handleAddSubItem(item.id)}
+                        className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-primary transition-colors"
+                        title="Adicionar subitem"
+                      >
+                        <List className="w-3.5 h-3.5" />
+                      </button>
                       <button
                         onClick={() => duplicateItem(item.id)}
-                        className="p-1.5 rounded hover:bg-accent text-muted-foreground"
+                        className="p-1 rounded hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+                        title="Duplicar"
                       >
                         <Copy className="w-3.5 h-3.5" />
                       </button>
                       <button
                         onClick={() => removeItem(item.id)}
-                        className="p-1.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
+                        className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
+                        title="Remover"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
                   </div>
-                  <Input
-                    placeholder="Descrição do item"
-                    value={item.description}
-                    onChange={(e) =>
-                      updateItem(item.id, { description: e.target.value })
-                    }
-                  />
-                  <div className="grid grid-cols-3 gap-2">
-                    <div className="space-y-1">
-                      <Label className="text-xs">Qtd.</Label>
-                      <Input
-                        type="number"
-                        min={0}
-                        value={item.quantity || ""}
-                        onChange={(e) =>
-                          updateItem(item.id, {
-                            quantity: Number(e.target.value) || 0,
-                          })
-                        }
-                        className="text-right font-mono"
-                      />
+
+                  {/* Mobile Card */}
+                  <div className="md:hidden p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => toggleExpand(item.id)}
+                          className="p-0.5 text-muted-foreground"
+                        >
+                          {isExpanded ? (
+                            <ChevronDown className="w-4 h-4" />
+                          ) : (
+                            <ChevronRight className="w-4 h-4" />
+                          )}
+                        </button>
+                        <span className="text-xs font-medium text-muted-foreground">
+                          Item {index + 1}
+                          {hasSubItems && (
+                            <span className="ml-1.5 text-[10px] bg-primary/10 text-primary px-1.5 py-0.5 rounded-full">
+                              {item.subItems.length} comp.
+                            </span>
+                          )}
+                        </span>
+                      </div>
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => handleAddSubItem(item.id)}
+                          className="p-1.5 rounded hover:bg-accent text-muted-foreground hover:text-primary"
+                          title="Adicionar subitem"
+                        >
+                          <List className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => duplicateItem(item.id)}
+                          className="p-1.5 rounded hover:bg-accent text-muted-foreground"
+                        >
+                          <Copy className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          onClick={() => removeItem(item.id)}
+                          className="p-1.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs">Preço Unit.</Label>
-                      <Input
-                        type="number"
-                        min={0}
-                        step={0.01}
-                        value={item.unitPrice || ""}
-                        onChange={(e) =>
-                          updateItem(item.id, {
-                            unitPrice: Number(e.target.value) || 0,
-                          })
-                        }
-                        className="text-right font-mono"
-                      />
+                    <Input
+                      placeholder="Descrição do item"
+                      value={item.description}
+                      onChange={(e) =>
+                        updateItem(item.id, { description: e.target.value })
+                      }
+                    />
+                    <div className="grid grid-cols-3 gap-2">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Qtd.</Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          value={item.quantity || ""}
+                          onChange={(e) =>
+                            updateItem(item.id, {
+                              quantity: Number(e.target.value) || 0,
+                            })
+                          }
+                          className="text-right font-mono"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Preço Unit.</Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          step={0.01}
+                          value={item.unitPrice || ""}
+                          onChange={(e) =>
+                            updateItem(item.id, {
+                              unitPrice: Number(e.target.value) || 0,
+                            })
+                          }
+                          className="text-right font-mono"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Desc. %</Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          max={100}
+                          value={item.discount || ""}
+                          onChange={(e) =>
+                            updateItem(item.id, {
+                              discount: Number(e.target.value) || 0,
+                            })
+                          }
+                          className="text-right font-mono"
+                        />
+                      </div>
                     </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs">Desc. %</Label>
-                      <Input
-                        type="number"
-                        min={0}
-                        max={100}
-                        value={item.discount || ""}
-                        onChange={(e) =>
-                          updateItem(item.id, {
-                            discount: Number(e.target.value) || 0,
-                          })
-                        }
-                        className="text-right font-mono"
-                      />
+                    <div className="text-right font-mono text-sm font-medium">
+                      Subtotal: {formatCurrency(item.subtotal)}
                     </div>
                   </div>
-                  <div className="text-right font-mono text-sm font-medium">
-                    Subtotal: {formatCurrency(item.subtotal)}
-                  </div>
-                </div>
-              </motion.div>
-            ))}
+
+                  {/* Sub-Items Panel (expandable) */}
+                  <AnimatePresence>
+                    {isExpanded && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="bg-muted/20 border-t border-border/30"
+                      >
+                        <div className="px-6 md:px-10 py-3 space-y-2">
+                          <div className="flex items-center justify-between mb-2">
+                            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                              Componentes / Subitens de "{item.description || `Item ${index + 1}`}"
+                            </span>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleAddSubItem(item.id)}
+                              className="gap-1 text-xs h-7"
+                            >
+                              <Plus className="w-3 h-3" />
+                              Subitem
+                            </Button>
+                          </div>
+
+                          {/* Sub-items header */}
+                          {item.subItems && item.subItems.length > 0 && (
+                            <div className="hidden md:grid grid-cols-[40px_1fr_80px_80px_140px_140px_36px] gap-2 px-2 pb-1 border-b border-border/40">
+                              <span className="text-[10px] font-medium text-muted-foreground uppercase">#</span>
+                              <span className="text-[10px] font-medium text-muted-foreground uppercase">Descrição</span>
+                              <span className="text-[10px] font-medium text-muted-foreground uppercase text-right">Qtd.</span>
+                              <span className="text-[10px] font-medium text-muted-foreground uppercase">Unid.</span>
+                              <span className="text-[10px] font-medium text-muted-foreground uppercase">Código</span>
+                              <span className="text-[10px] font-medium text-muted-foreground uppercase">Observação</span>
+                              <span></span>
+                            </div>
+                          )}
+
+                          {/* Sub-items list */}
+                          {item.subItems && item.subItems.map((si, siIdx) => (
+                            <div
+                              key={si.id}
+                              className="grid grid-cols-1 md:grid-cols-[40px_1fr_80px_80px_140px_140px_36px] gap-2 px-2 py-1.5 items-center hover:bg-muted/40 rounded transition-colors"
+                            >
+                              <span className="text-xs text-muted-foreground font-mono hidden md:block">
+                                {String(siIdx + 1).padStart(2, "0")}
+                              </span>
+                              <Input
+                                placeholder="Descrição do componente"
+                                value={si.description}
+                                onChange={(e) =>
+                                  updateSubItem(item.id, si.id, { description: e.target.value })
+                                }
+                                className="h-8 text-xs"
+                              />
+                              <Input
+                                type="number"
+                                min={0}
+                                step={1}
+                                value={si.quantity || ""}
+                                onChange={(e) =>
+                                  updateSubItem(item.id, si.id, { quantity: Number(e.target.value) || 0 })
+                                }
+                                className="h-8 text-xs text-right font-mono"
+                              />
+                              <Select
+                                value={si.unit}
+                                onValueChange={(v) => updateSubItem(item.id, si.id, { unit: v })}
+                              >
+                                <SelectTrigger className="h-8 text-xs">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="un">un</SelectItem>
+                                  <SelectItem value="pç">pç</SelectItem>
+                                  <SelectItem value="m">m</SelectItem>
+                                  <SelectItem value="m²">m²</SelectItem>
+                                  <SelectItem value="kg">kg</SelectItem>
+                                  <SelectItem value="cj">cj</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <Input
+                                placeholder="Código (ex: ABB 1SDA...)"
+                                value={si.code || ""}
+                                onChange={(e) =>
+                                  updateSubItem(item.id, si.id, { code: e.target.value })
+                                }
+                                className="h-8 text-xs"
+                              />
+                              <Input
+                                placeholder="Observação"
+                                value={si.observation || ""}
+                                onChange={(e) =>
+                                  updateSubItem(item.id, si.id, { observation: e.target.value })
+                                }
+                                className="h-8 text-xs"
+                              />
+                              <button
+                                onClick={() => removeSubItem(item.id, si.id)}
+                                className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors justify-self-center"
+                                title="Remover subitem"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ))}
+
+                          {/* Empty state */}
+                          {(!item.subItems || item.subItems.length === 0) && (
+                            <div className="text-center py-4">
+                              <p className="text-xs text-muted-foreground mb-2">
+                                Nenhum componente adicionado ainda.
+                              </p>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleAddSubItem(item.id)}
+                                className="gap-1 text-xs h-7"
+                              >
+                                <Plus className="w-3 h-3" />
+                                Adicionar primeiro componente
+                              </Button>
+                            </div>
+                          )}
+
+                          {/* Add sub-item button at bottom */}
+                          {item.subItems && item.subItems.length > 0 && (
+                            <button
+                              onClick={() => handleAddSubItem(item.id)}
+                              className="w-full py-2 mt-1 border border-dashed border-border/60 rounded text-xs text-muted-foreground hover:text-primary hover:border-primary/40 transition-colors flex items-center justify-center gap-1.5"
+                            >
+                              <Plus className="w-3 h-3" />
+                              Adicionar componente
+                            </button>
+                          )}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
+              );
+            })}
           </AnimatePresence>
 
           {/* Add item button (bottom) */}
@@ -379,7 +597,7 @@ export default function Step2DetailItems() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>{deliveryLabel}</Label>
+              <Label>{isServices ? "Prazo de Execução" : "Prazo de Entrega"}</Label>
               <Select
                 value={conditions.deliveryTime}
                 onValueChange={(v) => updateConditions({ deliveryTime: v })}
